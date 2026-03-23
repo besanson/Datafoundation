@@ -2,18 +2,12 @@ import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
 
-# ─────────────────────────────────────────────
-# Page config
-# ─────────────────────────────────────────────
 st.set_page_config(
     page_title="Data Hydration Gap Model",
     page_icon="💧",
     layout="wide",
 )
 
-# ─────────────────────────────────────────────
-# CSS
-# ─────────────────────────────────────────────
 def inject_css():
     st.markdown("""
     <style>
@@ -74,9 +68,7 @@ def inject_css():
 
 inject_css()
 
-# ─────────────────────────────────────────────
-# Hero
-# ─────────────────────────────────────────────
+# ── Hero ──────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div>
   <div class="hero-pill">💧 Data Hydration Gap Model · Besanson 2026</div>
@@ -89,9 +81,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────
-# Sidebar
-# ─────────────────────────────────────────────
+# ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## ⚙️ Your Organization")
 
@@ -148,14 +138,12 @@ with st.sidebar:
                           st.session_state.get("P_bar", 0.5), 0.05,
             help="📌 On average, what is the probability that any given domain will need data from another specific domain?\n\nLow (0.2): Most domains are independent — few cross-domain dependencies\nHigh (0.7): High interdependency — e.g. Finance needs Sales, Supply Chain needs Manufacturing, etc.")
 
-# ─────────────────────────────────────────────
-# Model computations — paper equations
-# ─────────────────────────────────────────────
+# ── Model computations ────────────────────────────────────────────────────────
 
 # Eq. (7): g_NE = max{0, (αβ − κ/q*) / γ_g}
 g_ne = max(0.0, (alpha * beta - kappa / q_star) / gamma_g) if (q_star > 0 and gamma_g > 0) else 0.0
 
-# Prop 1 / Eq. (8): g_SO includes (N−1)λ externality and consumer term Mω̄
+# Prop 1 / Eq. (8): g_SO = [αβ + (N−1)λ + Mω̄ − κ/q*] / γ_g clipped [0,1]
 g_so_raw = (alpha * beta + (N - 1) * lmbda + M * omega_bar - kappa / q_star) / gamma_g \
     if (q_star > 0 and gamma_g > 0) else 0.0
 g_so = float(np.clip(g_so_raw, 0.0, 1.0))
@@ -173,24 +161,23 @@ td_total = tau * q_star * N * (N - 1) * P_bar
 # Eq. (19): Pigouvian subsidy s_i = (N−1)λ · q*
 subsidy = (N - 1) * lmbda * q_star
 
-# Flags
-in_trap   = g_ne == 0.0
-pct_of_so = (g_ne / g_so * 100) if g_so > 0 else 0.0
+# Derived helpers
+in_trap          = g_ne == 0.0
+pct_of_so        = (g_ne / g_so * 100) if g_so > 0 else 0.0
+welfare_annual_m = N * 0.75   # §6.3 calibration ~$750K/domain
 
-# ─────────────────────────────────────────────
-# Diagnostic insight banner
-# ─────────────────────────────────────────────
+# ── Insight banner ────────────────────────────────────────────────────────────
 if in_trap:
     insight_msg = (
         f"⚠️ <strong>Data mesh trap detected.</strong> With your current parameters, "
         f"no domain will voluntarily invest in general data products (gⁿᵉ = 0). "
         f"The silver layer will <em>not</em> emerge organically. "
         f"The socially optimal level is gˢᵒ = {g_so:.2f} — requiring either centralized hydration "
-        f"or a Pigouvian subsidy of <strong>{subsidy:.3f}</strong> per domain."
+        f"or a reusability bonus of <strong>{subsidy:.3f}</strong> per domain."
     )
 elif pct_of_so < 40:
     insight_msg = (
-        f"🟡 <strong>Severe underinvestment.</strong> Domains will invest in generality "
+        f"🟡 <strong>Severe underinvestment.</strong> Domains invest in generality "
         f"(gⁿᵉ = {g_ne:.2f}) but only reach <strong>{pct_of_so:.0f}%</strong> of the social optimum "
         f"(gˢᵒ = {g_so:.2f}). Significant welfare is being left on the table."
     )
@@ -209,9 +196,7 @@ else:
 
 st.markdown(f'<div class="insight-box">{insight_msg}</div>', unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────
-# KPI Row 1 — generality
-# ─────────────────────────────────────────────
+# ── KPI Row 1 — generality ────────────────────────────────────────────────────
 st.markdown('<div class="section-label">Generality: what domains choose vs. what is optimal</div>',
             unsafe_allow_html=True)
 
@@ -242,7 +227,7 @@ with col2:
 with col3:
     if in_trap:
         badge = '<span class="badge-trap">⚠️ Data mesh trap</span>'
-    elif delta_g / g_so > 0.5 if g_so > 0 else False:
+    elif (delta_g / g_so > 0.5 if g_so > 0 else False):
         badge = '<span class="badge-partial">⚡ Large gap</span>'
     else:
         badge = '<span class="badge-ok">✅ Manageable gap</span>'
@@ -256,14 +241,11 @@ with col3:
       <div class="kpi-interp">Domains invest at <strong>{pct_of_so:.0f}%</strong> of what is socially optimal ({gap_pct:.0f}% gap).</div>
     </div>""", unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────
-# KPI Row 2 — welfare, debt, subsidy
-# ─────────────────────────────────────────────
+# ── KPI Row 2 — welfare, debt, subsidy ───────────────────────────────────────
 st.markdown('<div class="section-label">Welfare loss, technical debt & corrective mechanism</div>',
             unsafe_allow_html=True)
 
 col4, col5, col6 = st.columns(3)
-welfare_annual_m = N * 0.75  # §6.3: ~$750K per domain
 
 with col4:
     st.markdown(f"""
@@ -287,21 +269,18 @@ with col5:
 with col6:
     st.markdown(f"""
     <div class="kpi-card">
-      <div class="kpi-label">Pigouvian subsidy sᵢ (eq. 19)</div>
+      <div class="kpi-label">Reusability bonus needed — sᵢ (eq. 19)</div>
       <div class="kpi-value-blue">{subsidy:.3f}</div>
-      <div class="kpi-sub">The per-domain subsidy that exactly corrects the externality and aligns domain incentives with the social optimum.</div>
+      <div class="kpi-sub">The per-domain reward that exactly corrects the externality and aligns domain incentives with the social optimum.</div>
       <div class="kpi-interp">Paying each domain <strong>{subsidy:.3f}</strong> per unit of generality closes the gap at ~$1M/yr governance cost vs ${welfare_annual_m:.1f}M/yr welfare loss.</div>
     </div>""", unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────
-# Charts
-# ─────────────────────────────────────────────
+# ── Charts ────────────────────────────────────────────────────────────────────
 st.markdown('<hr class="divider">', unsafe_allow_html=True)
 st.markdown('<div class="section-label">How things scale with the number of domains N</div>',
             unsafe_allow_html=True)
 
-N_vals = np.arange(2, 41, dtype=float)
-
+N_vals      = np.arange(2, 41, dtype=float)
 td_curve    = tau * q_star * N_vals * (N_vals - 1) * P_bar
 g_ne_scalar = max(0.0, (alpha * beta - kappa / q_star) / gamma_g) if (q_star > 0 and gamma_g > 0) else 0.0
 g_ne_curve  = np.full_like(N_vals, g_ne_scalar)
@@ -309,10 +288,10 @@ g_so_curve  = np.clip(
     (alpha * beta + (N_vals - 1) * lmbda + M * omega_bar - kappa / q_star) / gamma_g,
     0.0, 1.0
 )
-delta_g_curve   = np.maximum(0.0, g_so_curve - g_ne_curve)
-welfare_ext_c   = ((N_vals - 1) * lmbda + M * omega_bar) * q_star * delta_g_curve
-welfare_cost_c  = (gamma_g / 2.0) * q_star * (g_so_curve**2 - g_ne_scalar**2)
-dw_curve        = N_vals * (welfare_ext_c - welfare_cost_c)
+delta_g_curve  = np.maximum(0.0, g_so_curve - g_ne_curve)
+welfare_ext_c  = ((N_vals - 1) * lmbda + M * omega_bar) * q_star * delta_g_curve
+welfare_cost_c = (gamma_g / 2.0) * q_star * (g_so_curve**2 - g_ne_scalar**2)
+dw_curve       = N_vals * (welfare_ext_c - welfare_cost_c)
 
 PLOT_BG  = "rgba(10,15,28,1)"
 PAPER_BG = "rgba(5,8,20,1)"
@@ -358,7 +337,6 @@ with chart_col2:
     fig2.update_yaxes(title_text="TD_total ($M)")
     st.plotly_chart(fig2, use_container_width=True)
 
-# gNE vs gSO bar chart — fixed (no kwarg conflict)
 st.markdown('<div class="section-label">Current parameter snapshot — equilibrium vs. optimum</div>',
             unsafe_allow_html=True)
 
@@ -389,18 +367,16 @@ fig3.update_layout(
 )
 st.plotly_chart(fig3, use_container_width=True)
 
-# ─────────────────────────────────────────────
-# Governance regime comparison (Table 2)
-# ─────────────────────────────────────────────
+# ── Governance regime comparison ──────────────────────────────────────────────
 st.markdown('<hr class="divider">', unsafe_allow_html=True)
 st.markdown('<div class="section-label">Governance regime comparison — Table 2 from the paper</div>',
             unsafe_allow_html=True)
 
 regimes = [
-    ("Pure Data Mesh",          0.0,             0.0, -welfare_annual_m, "#F87171"),
-    ("Centralized Hydration",   round(g_so, 2),  2.0,  welfare_annual_m - 2.0, "#FCD34D"),
-    ("Federated + Incentives",  round(g_so, 2),  1.0,  welfare_annual_m - 1.0, "#34D399"),
-    ("Hybrid (central silver)", round(g_so*0.7, 2), 1.5, welfare_annual_m - 1.5, "#60A5FA"),
+    ("Pure Data Mesh",          0.0,              0.0, -welfare_annual_m,      "#F87171"),
+    ("Centralized Hydration",   round(g_so, 2),   2.0,  welfare_annual_m-2.0,  "#FCD34D"),
+    ("Federated + Incentives",  round(g_so, 2),   1.0,  welfare_annual_m-1.0,  "#34D399"),
+    ("Hybrid (central silver)", round(g_so*0.7,2),1.5,  welfare_annual_m-1.5,  "#60A5FA"),
 ]
 
 r_cols = st.columns(4)
@@ -416,9 +392,131 @@ for col, (name, g_val, cost, net, color) in zip(r_cols, regimes):
       </div>
     </div>""", unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────
-# Footer
-# ─────────────────────────────────────────────
+# ── Plain English interpretation ──────────────────────────────────────────────
+st.markdown('<hr class="divider">', unsafe_allow_html=True)
+st.markdown('<div class="section-label">What does all this mean for your organization?</div>',
+            unsafe_allow_html=True)
+
+if in_trap:
+    diagnosis_icon  = "🔴"
+    diagnosis_title = "Your organization is in the Data Mesh Trap"
+    diagnosis_body  = (
+        f"With {N} domains, your current setup gives domain teams <strong>zero incentive</strong> "
+        f"to build data products that others can reuse. Every team will build the minimum needed "
+        f"for their own use case — and stop there. "
+        f"No shared silver layer will emerge on its own. "
+        f"Cross-domain analytics (customer 360, supply chain visibility, unified reporting) will require "
+        f"<strong>custom pipelines built from scratch</strong> every single time, "
+        f"at an estimated accumulated cost of <strong>${td_total:,.2f}M</strong> in technical debt."
+    )
+elif pct_of_so < 40:
+    diagnosis_icon  = "🟠"
+    diagnosis_title = "Severe underinvestment — silver layer is thin and fragile"
+    diagnosis_body  = (
+        f"Domains invest some effort in generality (gⁿᵉ = {g_ne:.2f}) but only reach "
+        f"<strong>{pct_of_so:.0f}%</strong> of what is needed. "
+        f"A partial silver layer exists but is narrow and domain-specific. "
+        f"Cross-domain projects will constantly hit data contract gaps, schema mismatches, "
+        f"and missing documentation. Technical debt is accumulating at "
+        f"<strong>${td_total:,.2f}M</strong> across {N*(N-1)} potential domain pairs."
+    )
+elif pct_of_so < 75:
+    diagnosis_icon  = "🟡"
+    diagnosis_title = "Moderate underinvestment — your silver layer needs a push"
+    diagnosis_body  = (
+        f"Domains are investing meaningfully in generality (gⁿᵉ = {g_ne:.2f}, "
+        f"{pct_of_so:.0f}% of optimal). "
+        f"A real silver layer exists but gaps remain. Some cross-domain analytics work well; "
+        f"others still require custom integration. "
+        f"A relatively small governance investment could close the remaining gap and "
+        f"unlock the full ${welfare_annual_m:.1f}M in annual welfare gains."
+    )
+else:
+    diagnosis_icon  = "🟢"
+    diagnosis_title = "Near-optimal — your governance is working"
+    diagnosis_body  = (
+        f"Domains are investing at {pct_of_so:.0f}% of the social optimum (gⁿᵉ = {g_ne:.2f}). "
+        f"Your organization has strong incentive alignment — domain teams find it in their own "
+        f"interest to build reusable data products. Cross-domain analytics is largely self-serving. "
+        f"Marginal improvements are still possible but returns are diminishing."
+    )
+
+st.markdown(f"""
+<div class="kpi-card" style="margin-bottom:1rem;">
+  <div style="font-size:1.1rem;font-weight:700;color:#F9FAFB;margin-bottom:0.5rem;">
+    {diagnosis_icon} {diagnosis_title}
+  </div>
+  <div style="color:#9CA3AF;font-size:0.88rem;line-height:1.65;">{diagnosis_body}</div>
+</div>
+""", unsafe_allow_html=True)
+
+st.markdown('<div class="section-label">Recommended action</div>', unsafe_allow_html=True)
+
+rec_col1, rec_col2, rec_col3 = st.columns(3)
+invest_needed = round(subsidy * N, 2)
+
+with rec_col1:
+    st.markdown(f"""
+    <div class="kpi-card">
+      <div style="font-size:1rem;font-weight:700;color:#60A5FA;margin-bottom:0.4rem;">
+        💰 Option 1 — Federated incentives
+      </div>
+      <div style="color:#9CA3AF;font-size:0.82rem;line-height:1.6;">
+        Pay each domain team a <strong>cross-domain bonus</strong> of
+        <strong>{subsidy:.2f} units</strong> for every unit of generality they add to their data products.
+        Think of it as a "reusability reward" funded by a small platform tax on narrow products.<br><br>
+        Total annual investment: ~<strong>${invest_needed:.2f}M</strong> across all {N} domains.<br>
+        This fully closes the gap to gˢᵒ = {g_so:.2f} at the lowest coordination cost.
+      </div>
+    </div>""", unsafe_allow_html=True)
+
+with rec_col2:
+    st.markdown(f"""
+    <div class="kpi-card">
+      <div style="font-size:1rem;font-weight:700;color:#34D399;margin-bottom:0.4rem;">
+        🏗️ Option 2 — Centralized hydration team
+      </div>
+      <div style="color:#9CA3AF;font-size:0.82rem;line-height:1.6;">
+        Create a <strong>central data hydration team</strong> responsible for building and maintaining
+        the silver layer on behalf of all domains. Domains keep ownership of bronze (raw) data;
+        the central team owns the standardized general layer.<br><br>
+        Estimated cost: ~<strong>$2M/year</strong> (platform team + tooling).<br>
+        Net benefit vs. pure mesh: ~<strong>${max(0.0, welfare_annual_m - 2.0):.1f}M/year</strong> saved.<br>
+        Best when domain teams have low capacity or motivation to self-standardize.
+      </div>
+    </div>""", unsafe_allow_html=True)
+
+with rec_col3:
+    st.markdown(f"""
+    <div class="kpi-card">
+      <div style="font-size:1rem;font-weight:700;color:#A78BFA;margin-bottom:0.4rem;">
+        🤝 Option 3 — Hybrid approach
+      </div>
+      <div style="color:#9CA3AF;font-size:0.82rem;line-height:1.6;">
+        A <strong>central platform team sets standards</strong> (schemas, contracts, catalog),
+        but domain teams execute their own silver layer within those guardrails.
+        Combine tooling investment with a lighter incentive mechanism.<br><br>
+        Estimated cost: ~<strong>$1.5M/year</strong>.<br>
+        Achieves ~70% of social optimum (g ≈ {g_so*0.7:.2f}).<br>
+        Net benefit: ~<strong>${max(0.0, welfare_annual_m - 1.5):.1f}M/year</strong>.<br>
+        Best balance of autonomy and alignment for most enterprises.
+      </div>
+    </div>""", unsafe_allow_html=True)
+
+with st.expander("📖 Plain English guide to every number on this page"):
+    st.markdown("""
+| Number | What it means in plain English |
+|--------|-------------------------------|
+| **gⁿᵉ — equilibrium generality** | If you leave domain teams alone with no incentives or mandates, this is how "reusable" their data products will be. 0 = completely siloed, 1 = fully standardized and reusable by everyone. |
+| **gˢᵒ — social optimum** | The reusability level that would maximize value for the whole organization — if someone could coordinate everyone perfectly. This is your target. |
+| **Generality gap Δg** | How far short of the ideal your organization falls when domains act on their own self-interest. The bigger this number, the more value is being left on the table. |
+| **Welfare loss ΔW** | The total organizational value destroyed every year because of underinvestment in shared data products. Includes duplicated engineering, redundant pipelines, and inconsistent data definitions. |
+| **Technical debt TD** | The hidden future cost your organization is accumulating. Every narrow data product today means a custom integration pipeline tomorrow. This grows explosively as the number of domains increases. |
+| **Reusability bonus sᵢ** | The reward each domain team needs to receive to make it worth their while to invest in general data products. Same principle as a carbon tax but in reverse — you reward positive externalities instead of taxing negative ones. |
+| **N × (N−1) pairs** | The number of potential cross-domain integrations that become expensive when no general products exist. With 12 domains that is 132 pairs. With 20 it is 380. This is why data debt explodes at scale. |
+""")
+
+# ── Footer ────────────────────────────────────────────────────────────────────
 st.markdown('<hr class="divider">', unsafe_allow_html=True)
 st.markdown("""
 <p style="color:#374151;font-size:0.7rem;text-align:center;">
