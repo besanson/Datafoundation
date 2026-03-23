@@ -364,4 +364,162 @@ with col6:
     st.markdown(
         f"""
         <div class="kpi-card">
-          <div class="kpi-label">Pigouvian subsi
+          <div class="kpi-label">Pigouvian subsidy sᵢ (eq. 19)</div>
+          <div class="kpi-value">{subsidy:.3f}</div>
+          <div class="kpi-sub">Subsidy that exactly corrects the externality: sᵢ = (N−1)λ · q*.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+# ─────────────────────────────────────────────
+# Charts
+# ─────────────────────────────────────────────
+st.markdown('<hr class="divider">', unsafe_allow_html=True)
+st.markdown('<div class="section-label">Scale effects</div>', unsafe_allow_html=True)
+
+N_vals = np.arange(2, 41)
+
+# Technical debt curve
+td_vals  = tau  * q_star * N_vals * (N_vals - 1) * P_bar
+
+# Welfare loss curve (symmetric)
+dg_vals  = np.maximum(0.0,
+    (alpha * beta + (N_vals - 1) * lmbda + M * omega_bar - kappa / q_star) / gamma_g
+    - max(0.0, (alpha * beta - kappa / q_star) / gamma_g)
+)
+we_vals  = N_vals * (
+    ((N_vals - 1) * lmbda + M * omega_bar) * q_star * dg_vals
+    - (gamma_g / 2.0) * q_star * (
+        np.minimum(((alpha * beta + (N_vals - 1) * lmbda + M * omega_bar - kappa / q_star) / gamma_g).clip(0, 1), 1.0) ** 2
+        - max(0.0, (alpha * beta - kappa / q_star) / gamma_g) ** 2
+    )
+)
+
+chart_col1, chart_col2 = st.columns(2)
+
+PLOT_BG   = "rgba(10,15,28,1)"
+PAPER_BG  = "rgba(5,8,20,1)"
+FONT_CLR  = "#9CA3AF"
+GRID_CLR  = "rgba(255,255,255,0.05)"
+
+def base_layout(title_text):
+    return dict(
+        title=dict(text=title_text, font=dict(size=13, color="#E5E7EB"), x=0.01),
+        height=300,
+        margin=dict(l=10, r=10, t=40, b=10),
+        plot_bgcolor=PLOT_BG,
+        paper_bgcolor=PAPER_BG,
+        font=dict(color=FONT_CLR, size=11),
+        xaxis=dict(gridcolor=GRID_CLR, zerolinecolor=GRID_CLR),
+        yaxis=dict(gridcolor=GRID_CLR, zerolinecolor=GRID_CLR),
+    )
+
+with chart_col1:
+    fig1 = go.Figure()
+    fig1.add_trace(go.Scatter(
+        x=N_vals, y=td_vals,
+        mode="lines",
+        line=dict(color="#F87171", width=2.5),
+        fill="tozeroy",
+        fillcolor="rgba(248,113,113,0.08)",
+        name="TD_total",
+    ))
+    fig1.add_vline(x=N, line_dash="dot", line_color="#7DD3FC",
+                   annotation_text=f"  N={N}", annotation_font_color="#7DD3FC")
+    fig1.update_layout(**base_layout("Technical debt TD_total (M$) vs N — eq. (13)"))
+    fig1.update_xaxes(title_text="N (domains)")
+    fig1.update_yaxes(title_text="TD_total (M$)")
+    st.plotly_chart(fig1, use_container_width=True)
+
+with chart_col2:
+    fig2 = go.Figure()
+    fig2.add_trace(go.Scatter(
+        x=N_vals, y=we_vals,
+        mode="lines",
+        line=dict(color="#A78BFA", width=2.5),
+        fill="tozeroy",
+        fillcolor="rgba(167,139,250,0.08)",
+        name="ΔW",
+    ))
+    fig2.add_vline(x=N, line_dash="dot", line_color="#7DD3FC",
+                   annotation_text=f"  N={N}", annotation_font_color="#7DD3FC")
+    fig2.update_layout(**base_layout("Welfare loss ΔW (model units) vs N — eq. (10)"))
+    fig2.update_xaxes(title_text="N (domains)")
+    fig2.update_yaxes(title_text="ΔW")
+    st.plotly_chart(fig2, use_container_width=True)
+
+# ─────────────────────────────────────────────
+# Generality bar: gNE vs gSO
+# ─────────────────────────────────────────────
+st.markdown('<div class="section-label">Generality: equilibrium vs. optimum</div>', unsafe_allow_html=True)
+
+fig3 = go.Figure()
+fig3.add_trace(go.Bar(name="Nash Equilibrium gⁿᵉ", x=["Generality"],
+                      y=[g_ne], marker_color="#F87171"))
+fig3.add_trace(go.Bar(name="Social Optimum gˢᵒ", x=["Generality"],
+                      y=[g_so], marker_color="#34D399"))
+fig3.update_layout(
+    **base_layout("gⁿᵉ vs. gˢᵒ — Proposition 1"),
+    barmode="group",
+    height=240,
+    showlegend=True,
+    legend=dict(
+        orientation="h",
+        yanchor="bottom", y=1.02,
+        xanchor="right", x=1,
+        font=dict(color="#9CA3AF"),
+    ),
+)
+fig3.update_yaxes(range=[0, 1], title_text="Generality g")
+st.plotly_chart(fig3, use_container_width=True)
+
+# ─────────────────────────────────────────────
+# Governance regimes (Table 2 from the paper)
+# ─────────────────────────────────────────────
+st.markdown('<hr class="divider">', unsafe_allow_html=True)
+st.markdown('<div class="section-label">Governance regime comparison — Table 2 from the paper</div>',
+            unsafe_allow_html=True)
+
+welfare_loss_annual = N * 0.75  # baseline ~$750K per domain from §6.3 calibration
+
+regimes = {
+    "Pure Data Mesh":          (0.0,       0.0,  -welfare_loss_annual),
+    "Centralized Hydration":   (round(g_so * 1.0, 2),  2.0, welfare_loss_annual - 2.0),
+    "Federated + Incentives":  (round(g_so, 2),         1.0, welfare_loss_annual - 1.0),
+    "Hybrid (central silver)": (round(g_so * 0.7, 2),   1.5, welfare_loss_annual - 1.5),
+}
+
+cols = st.columns(4)
+for col, (regime, (g_val, cost, net)) in zip(cols, regimes.items()):
+    color = "#34D399" if net == max(v[2] for v in regimes.values()) else \
+            "#F87171" if net < 0 else "#FCD34D"
+    col.markdown(
+        f"""
+        <div class="kpi-card" style="text-align:center;">
+          <div class="kpi-label" style="text-align:center;">{regime}</div>
+          <div style="font-size:1.35rem;font-weight:800;color:{color};margin:0.3rem 0;">
+            g = {g_val:.2f}
+          </div>
+          <div class="kpi-sub" style="text-align:center;">
+            Cost: ${cost:.1f}M<br>
+            Net: <span style="color:{color};font-weight:700;">${net:+.1f}M</span>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+# ─────────────────────────────────────────────
+# Footer
+# ─────────────────────────────────────────────
+st.markdown('<hr class="divider">', unsafe_allow_html=True)
+st.markdown(
+    """
+    <p style="color:#374151;font-size:0.72rem;text-align:center;">
+    Besanson (2026) · The Data Hydration Gap · All equations follow the paper directly ·
+    gⁿᵉ from eq. (7) · gˢᵒ from Proposition 1 · ΔW from eq. (10) · TD from eq. (13) · sᵢ from eq. (19)
+    </p>
+    """,
+    unsafe_allow_html=True,
+)
