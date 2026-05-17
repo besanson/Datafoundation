@@ -1,12 +1,21 @@
-import streamlit as st
+import io
 import numpy as np
+import pandas as pd
+import streamlit as st
 import plotly.graph_objects as go
+
+from model import (
+    compute_all, curves_vs_N,
+    PAPER_BASELINE, FORTUNE_500, GOVERNANCE_COSTS,
+)
 
 st.set_page_config(
     page_title="Data Hydration Gap Model",
     page_icon="💧",
     layout="wide",
 )
+
+# ── Styling ───────────────────────────────────────────────────────────────────
 
 def inject_css():
     st.markdown("""
@@ -66,6 +75,27 @@ def inject_css():
     </style>
     """, unsafe_allow_html=True)
 
+
+PLOT_BG  = "rgba(10,15,28,1)"
+PAPER_BG = "rgba(5,8,20,1)"
+GRID_CLR = "rgba(255,255,255,0.05)"
+FONT_CLR = "#9CA3AF"
+
+
+def base_layout(title_text, h=300):
+    return dict(
+        title=dict(text=title_text, font=dict(size=12, color="#E5E7EB"), x=0.01),
+        height=h,
+        margin=dict(l=10, r=10, t=40, b=10),
+        plot_bgcolor=PLOT_BG, paper_bgcolor=PAPER_BG,
+        font=dict(color=FONT_CLR, size=11),
+        xaxis=dict(gridcolor=GRID_CLR, zerolinecolor=GRID_CLR, title_text="N (number of domains)"),
+        yaxis=dict(gridcolor=GRID_CLR, zerolinecolor=GRID_CLR),
+        legend=dict(font=dict(color=FONT_CLR), bgcolor="rgba(0,0,0,0)"),
+        showlegend=True,
+    )
+
+
 inject_css()
 
 # ── Hero ──────────────────────────────────────────────────────────────────────
@@ -88,14 +118,10 @@ with st.sidebar:
     col_a, col_b = st.columns(2)
     with col_a:
         if st.button("📄 Paper baseline", use_container_width=True):
-            st.session_state.update(N=12, alpha=0.5, beta=0.15, lmbda=0.4,
-                                    gamma_g=0.4, kappa=0.25, q_star=0.6,
-                                    M=10, omega=0.3, tau=0.05, P_bar=0.5)
+            st.session_state.update(**{k: v for k, v in PAPER_BASELINE.items()})
     with col_b:
         if st.button("🏢 Fortune 500", use_container_width=True):
-            st.session_state.update(N=20, alpha=0.6, beta=0.2, lmbda=0.5,
-                                    gamma_g=0.35, kappa=0.2, q_star=0.7,
-                                    M=20, omega=0.3, tau=0.08, P_bar=0.6)
+            st.session_state.update(**{k: v for k, v in FORTUNE_500.items()})
 
     st.markdown("---")
 
@@ -116,7 +142,7 @@ with st.sidebar:
                           st.session_state.get("lmbda", 0.4), 0.01,
             help="📌 What share of analytical value in your org comes from combining data across domains?\n\nLow (0.2): Most analytics stays within one domain (siloed org)\nMedium (0.4): 40% of queries need cross-domain joins (typical enterprise)\nHigh (0.6): Most insights require cross-domain data (e.g. customer 360, supply chain + finance)")
         omega_bar = st.slider("Avg. consumer weight ω̄", 0.0, 1.0,
-                              st.session_state.get("omega", 0.3), 0.05,
+                              st.session_state.get("omega_bar", 0.3), 0.05,
             help="📌 How important is each individual domain's data to cross-domain consumers on average?\n\nLow (0.1): Consumers depend on only a few key domains\nHigh (0.5): Consumers depend heavily and equally on all domains")
 
     with st.expander("💰 Cost structure", expanded=False):
@@ -138,33 +164,33 @@ with st.sidebar:
                           st.session_state.get("P_bar", 0.5), 0.05,
             help="📌 On average, what is the probability that any given domain will need data from another specific domain?\n\nLow (0.2): Most domains are independent — few cross-domain dependencies\nHigh (0.7): High interdependency — e.g. Finance needs Sales, Supply Chain needs Manufacturing, etc.")
 
-# ── Model computations ────────────────────────────────────────────────────────
+    with st.expander("🏛️ Governance costs", expanded=False):
+        cost_centralized = st.slider(
+            "Centralized team cost (M$/yr)", 0.5, 5.0,
+            float(st.session_state.get("cost_centralized", GOVERNANCE_COSTS["centralized"])), 0.1,
+            help="Annual cost of a central data hydration team (platform + tooling + headcount).")
+        cost_hybrid = st.slider(
+            "Hybrid approach cost (M$/yr)", 0.5, 3.0,
+            float(st.session_state.get("cost_hybrid", GOVERNANCE_COSTS["hybrid"])), 0.1,
+            help="Annual cost of a standards team + lighter incentive mechanism.")
 
-# Eq. (7): g_NE = max{0, (αβ − κ/q*) / γ_g}
-g_ne = max(0.0, (alpha * beta - kappa / q_star) / gamma_g) if (q_star > 0 and gamma_g > 0) else 0.0
+# ── Model ─────────────────────────────────────────────────────────────────────
+params = dict(
+    N=N, M=M, alpha=alpha, beta=beta, lmbda=lmbda, omega_bar=omega_bar,
+    gamma_g=gamma_g, kappa=kappa, q_star=q_star, tau=tau, P_bar=P_bar,
+)
+r = compute_all(params)
+g_ne        = r["g_ne"]
+g_so        = r["g_so"]
+delta_g     = r["delta_g"]
+delta_W     = r["delta_W"]
+td_total    = r["td_total"]
+subsidy     = r["subsidy"]
+pct_of_so   = r["pct_of_so"]
+in_trap     = r["in_trap"]
 
-# Prop 1 / Eq. (8): g_SO = [αβ + (N−1)λ + Mω̄ − κ/q*] / γ_g clipped [0,1]
-g_so_raw = (alpha * beta + (N - 1) * lmbda + M * omega_bar - kappa / q_star) / gamma_g \
-    if (q_star > 0 and gamma_g > 0) else 0.0
-g_so = float(np.clip(g_so_raw, 0.0, 1.0))
-
-delta_g = max(0.0, g_so - g_ne)
-
-# Eq. (10): ΔW
-welfare_ext  = ((N - 1) * lmbda + M * omega_bar) * q_star * delta_g
-welfare_cost = (gamma_g / 2.0) * q_star * (g_so**2 - g_ne**2)
-delta_W      = N * (welfare_ext - welfare_cost)
-
-# Eq. (13): TD_total = τ · q̄ · N(N−1) · P̄
-td_total = tau * q_star * N * (N - 1) * P_bar
-
-# Eq. (19): Pigouvian subsidy s_i = (N−1)λ · q*
-subsidy = (N - 1) * lmbda * q_star
-
-# Derived helpers
-in_trap          = g_ne == 0.0
-pct_of_so        = (g_ne / g_so * 100) if g_so > 0 else 0.0
-welfare_annual_m = N * 0.75   # §6.3 calibration ~$750K/domain
+# §6.3 calibration: ~$750K/domain
+welfare_annual_m = N * 0.75
 
 # ── Insight banner ────────────────────────────────────────────────────────────
 if in_trap:
@@ -280,44 +306,16 @@ st.markdown('<hr class="divider">', unsafe_allow_html=True)
 st.markdown('<div class="section-label">How things scale with the number of domains N</div>',
             unsafe_allow_html=True)
 
-N_vals      = np.arange(2, 41, dtype=float)
-td_curve    = tau * q_star * N_vals * (N_vals - 1) * P_bar
-g_ne_scalar = max(0.0, (alpha * beta - kappa / q_star) / gamma_g) if (q_star > 0 and gamma_g > 0) else 0.0
-g_ne_curve  = np.full_like(N_vals, g_ne_scalar)
-g_so_curve  = np.clip(
-    (alpha * beta + (N_vals - 1) * lmbda + M * omega_bar - kappa / q_star) / gamma_g,
-    0.0, 1.0
-)
-delta_g_curve  = np.maximum(0.0, g_so_curve - g_ne_curve)
-welfare_ext_c  = ((N_vals - 1) * lmbda + M * omega_bar) * q_star * delta_g_curve
-welfare_cost_c = (gamma_g / 2.0) * q_star * (g_so_curve**2 - g_ne_scalar**2)
-dw_curve       = N_vals * (welfare_ext_c - welfare_cost_c)
-
-PLOT_BG  = "rgba(10,15,28,1)"
-PAPER_BG = "rgba(5,8,20,1)"
-GRID_CLR = "rgba(255,255,255,0.05)"
-FONT_CLR = "#9CA3AF"
-
-def base_layout(title_text, h=300):
-    return dict(
-        title=dict(text=title_text, font=dict(size=12, color="#E5E7EB"), x=0.01),
-        height=h,
-        margin=dict(l=10, r=10, t=40, b=10),
-        plot_bgcolor=PLOT_BG, paper_bgcolor=PAPER_BG,
-        font=dict(color=FONT_CLR, size=11),
-        xaxis=dict(gridcolor=GRID_CLR, zerolinecolor=GRID_CLR, title_text="N (number of domains)"),
-        yaxis=dict(gridcolor=GRID_CLR, zerolinecolor=GRID_CLR),
-        legend=dict(font=dict(color=FONT_CLR), bgcolor="rgba(0,0,0,0)"),
-        showlegend=True,
-    )
+N_vals = np.arange(2, 41, dtype=float)
+curves = curves_vs_N(params, N_vals)
 
 chart_col1, chart_col2 = st.columns(2)
 
 with chart_col1:
     fig1 = go.Figure()
-    fig1.add_trace(go.Scatter(x=N_vals, y=g_ne_curve, name="gⁿᵉ (equilibrium)",
+    fig1.add_trace(go.Scatter(x=N_vals, y=curves["g_ne"], name="gⁿᵉ (equilibrium)",
         mode="lines", line=dict(color="#F87171", width=2.5, dash="dot")))
-    fig1.add_trace(go.Scatter(x=N_vals, y=g_so_curve, name="gˢᵒ (social optimum)",
+    fig1.add_trace(go.Scatter(x=N_vals, y=curves["g_so"], name="gˢᵒ (social optimum)",
         mode="lines", line=dict(color="#34D399", width=2.5),
         fill="tonexty", fillcolor="rgba(52,211,153,0.07)"))
     fig1.add_vline(x=N, line_dash="dot", line_color="#7DD3FC",
@@ -328,7 +326,7 @@ with chart_col1:
 
 with chart_col2:
     fig2 = go.Figure()
-    fig2.add_trace(go.Scatter(x=N_vals, y=td_curve, name="TD_total",
+    fig2.add_trace(go.Scatter(x=N_vals, y=curves["td"], name="TD_total",
         mode="lines", line=dict(color="#F87171", width=2.5),
         fill="tozeroy", fillcolor="rgba(248,113,113,0.08)"))
     fig2.add_vline(x=N, line_dash="dot", line_color="#7DD3FC",
@@ -336,6 +334,17 @@ with chart_col2:
     fig2.update_layout(**base_layout("Technical debt TD_total ($M) vs N — eq. (13)"))
     fig2.update_yaxes(title_text="TD_total ($M)")
     st.plotly_chart(fig2, use_container_width=True)
+
+# Welfare loss vs N chart (new)
+fig_dw = go.Figure()
+fig_dw.add_trace(go.Scatter(x=N_vals, y=curves["dw"], name="ΔW (welfare loss)",
+    mode="lines", line=dict(color="#FCD34D", width=2.5),
+    fill="tozeroy", fillcolor="rgba(252,211,77,0.07)"))
+fig_dw.add_vline(x=N, line_dash="dot", line_color="#7DD3FC",
+    annotation_text=f"  N={N}, ΔW={delta_W:.1f}", annotation_font_color="#7DD3FC")
+fig_dw.update_layout(**base_layout("Annual welfare loss ΔW vs N — eq. (10)", h=260))
+fig_dw.update_yaxes(title_text="ΔW (model units)")
+st.plotly_chart(fig_dw, use_container_width=True)
 
 st.markdown('<div class="section-label">Current parameter snapshot — equilibrium vs. optimum</div>',
             unsafe_allow_html=True)
@@ -367,16 +376,76 @@ fig3.update_layout(
 )
 st.plotly_chart(fig3, use_container_width=True)
 
+# ── Sensitivity tornado chart (new) ───────────────────────────────────────────
+st.markdown('<hr class="divider">', unsafe_allow_html=True)
+st.markdown('<div class="section-label">Sensitivity analysis — which parameter matters most for welfare loss?</div>',
+            unsafe_allow_html=True)
+
+SENSITIVITY_PARAMS = ["N", "lmbda", "alpha", "beta", "gamma_g", "kappa", "q_star", "tau", "P_bar", "M", "omega_bar"]
+PARAM_LABELS = {
+    "N": "Domains N", "lmbda": "Cross-domain value λ", "alpha": "Analytics value α",
+    "beta": "Synergy β", "gamma_g": "Generality cost γ_g", "kappa": "Fixed cost κ",
+    "q_star": "Baseline quality q*", "tau": "Integration cost τ",
+    "P_bar": "Prob. needing domain P̄", "M": "Consumers M", "omega_bar": "Consumer weight ω̄",
+}
+PARAM_RANGES = {
+    "N": (2, 40), "lmbda": (0.0, 1.0), "alpha": (0.1, 1.0), "beta": (0.0, 0.5),
+    "gamma_g": (0.1, 1.0), "kappa": (0.0, 0.6), "q_star": (0.1, 1.0),
+    "tau": (0.0, 0.2), "P_bar": (0.0, 1.0), "M": (0, 50), "omega_bar": (0.0, 1.0),
+}
+
+base_dw = delta_W
+tornado_rows = []
+for p_key in SENSITIVITY_PARAMS:
+    lo, hi = PARAM_RANGES[p_key]
+    p_low  = dict(params, **{p_key: lo})
+    p_high = dict(params, **{p_key: hi})
+    dw_low  = compute_all(p_low)["delta_W"]
+    dw_high = compute_all(p_high)["delta_W"]
+    swing = abs(dw_high - dw_low)
+    tornado_rows.append((PARAM_LABELS[p_key], dw_low, dw_high, swing))
+
+tornado_rows.sort(key=lambda x: x[3])
+labels  = [r[0] for r in tornado_rows]
+dw_lows = [r[1] for r in tornado_rows]
+dw_highs = [r[2] for r in tornado_rows]
+
+fig_tornado = go.Figure()
+fig_tornado.add_trace(go.Bar(
+    name="Low end of range", x=dw_lows, y=labels, orientation="h",
+    marker_color="rgba(96,165,250,0.7)", marker_line_width=0,
+))
+fig_tornado.add_trace(go.Bar(
+    name="High end of range", x=dw_highs, y=labels, orientation="h",
+    marker_color="rgba(248,113,113,0.7)", marker_line_width=0,
+))
+fig_tornado.add_vline(x=base_dw, line_dash="dot", line_color="#FCD34D",
+    annotation_text="  Current ΔW", annotation_font_color="#FCD34D")
+fig_tornado.update_layout(
+    barmode="overlay",
+    height=380,
+    margin=dict(l=10, r=10, t=50, b=10),
+    plot_bgcolor=PLOT_BG, paper_bgcolor=PAPER_BG,
+    font=dict(color=FONT_CLR, size=11),
+    xaxis=dict(gridcolor=GRID_CLR, zerolinecolor=GRID_CLR, title_text="ΔW (model units)"),
+    yaxis=dict(gridcolor=GRID_CLR, zerolinecolor=GRID_CLR),
+    legend=dict(font=dict(color=FONT_CLR), bgcolor="rgba(0,0,0,0)"),
+    title=dict(text="Tornado chart — range of ΔW when each parameter is swept across its full range",
+               font=dict(size=12, color="#E5E7EB"), x=0.01),
+    showlegend=True,
+)
+st.plotly_chart(fig_tornado, use_container_width=True)
+
 # ── Governance regime comparison ──────────────────────────────────────────────
 st.markdown('<hr class="divider">', unsafe_allow_html=True)
 st.markdown('<div class="section-label">Governance regime comparison — Table 2 from the paper</div>',
             unsafe_allow_html=True)
 
 regimes = [
-    ("Pure Data Mesh",          0.0,              0.0, -welfare_annual_m,      "#F87171"),
-    ("Centralized Hydration",   round(g_so, 2),   2.0,  welfare_annual_m-2.0,  "#FCD34D"),
-    ("Federated + Incentives",  round(g_so, 2),   1.0,  welfare_annual_m-1.0,  "#34D399"),
-    ("Hybrid (central silver)", round(g_so*0.7,2),1.5,  welfare_annual_m-1.5,  "#60A5FA"),
+    ("Pure Data Mesh",          0.0,              0.0,                   -welfare_annual_m,                    "#F87171"),
+    ("Centralized Hydration",   round(g_so, 2),   cost_centralized,       welfare_annual_m - cost_centralized,  "#FCD34D"),
+    ("Federated + Incentives",  round(g_so, 2),   round(subsidy * N, 2),  welfare_annual_m - subsidy * N,       "#34D399"),
+    ("Hybrid (central silver)", round(g_so*0.7,2), cost_hybrid,           welfare_annual_m - cost_hybrid,       "#60A5FA"),
 ]
 
 r_cols = st.columns(4)
@@ -387,7 +456,7 @@ for col, (name, g_val, cost, net, color) in zip(r_cols, regimes):
       <div class="kpi-label" style="text-align:center;">{name}</div>
       <div style="font-size:1.3rem;font-weight:800;color:{color};margin:0.3rem 0;">g = {g_val:.2f}</div>
       <div class="kpi-sub" style="text-align:center;">
-        Platform cost: <strong>${cost:.1f}M</strong><br>
+        Platform cost: <strong>${cost:.2f}M</strong><br>
         Net vs. mesh: <span style="color:{color};font-weight:700;">{sign}${net:.1f}M</span>
       </div>
     </div>""", unsafe_allow_html=True)
@@ -480,8 +549,8 @@ with rec_col2:
         Create a <strong>central data hydration team</strong> responsible for building and maintaining
         the silver layer on behalf of all domains. Domains keep ownership of bronze (raw) data;
         the central team owns the standardized general layer.<br><br>
-        Estimated cost: ~<strong>$2M/year</strong> (platform team + tooling).<br>
-        Net benefit vs. pure mesh: ~<strong>${max(0.0, welfare_annual_m - 2.0):.1f}M/year</strong> saved.<br>
+        Estimated cost: ~<strong>${cost_centralized:.1f}M/year</strong> (platform team + tooling).<br>
+        Net benefit vs. pure mesh: ~<strong>${max(0.0, welfare_annual_m - cost_centralized):.1f}M/year</strong> saved.<br>
         Best when domain teams have low capacity or motivation to self-standardize.
       </div>
     </div>""", unsafe_allow_html=True)
@@ -496,12 +565,43 @@ with rec_col3:
         A <strong>central platform team sets standards</strong> (schemas, contracts, catalog),
         but domain teams execute their own silver layer within those guardrails.
         Combine tooling investment with a lighter incentive mechanism.<br><br>
-        Estimated cost: ~<strong>$1.5M/year</strong>.<br>
+        Estimated cost: ~<strong>${cost_hybrid:.1f}M/year</strong>.<br>
         Achieves ~70% of social optimum (g ≈ {g_so*0.7:.2f}).<br>
-        Net benefit: ~<strong>${max(0.0, welfare_annual_m - 1.5):.1f}M/year</strong>.<br>
+        Net benefit: ~<strong>${max(0.0, welfare_annual_m - cost_hybrid):.1f}M/year</strong>.<br>
         Best balance of autonomy and alignment for most enterprises.
       </div>
     </div>""", unsafe_allow_html=True)
+
+# ── Scenario export ───────────────────────────────────────────────────────────
+st.markdown('<hr class="divider">', unsafe_allow_html=True)
+st.markdown('<div class="section-label">Export scenario results</div>', unsafe_allow_html=True)
+
+export_df = pd.DataFrame([{
+    # Inputs
+    "N (domains)": N, "M (consumers)": M,
+    "α (analytics value)": alpha, "β (synergy)": beta,
+    "λ (cross-domain value)": lmbda, "ω̄ (consumer weight)": omega_bar,
+    "γ_g (generality cost)": gamma_g, "κ (fixed cost)": kappa,
+    "q* (baseline quality)": q_star, "τ (integration cost $M)": tau,
+    "P̄ (prob. needing domain)": P_bar,
+    # Outputs
+    "g_NE (equilibrium)": round(g_ne, 4),
+    "g_SO (social optimum)": round(g_so, 4),
+    "Δg (gap)": round(delta_g, 4),
+    "ΔW (welfare loss)": round(delta_W, 4),
+    "TD_total ($M)": round(td_total, 4),
+    "s_i (subsidy)": round(subsidy, 4),
+    "% of social optimum": round(pct_of_so, 1),
+    "In trap": in_trap,
+}])
+
+csv_bytes = export_df.to_csv(index=False).encode()
+st.download_button(
+    label="⬇️ Download scenario as CSV",
+    data=csv_bytes,
+    file_name="data_hydration_gap_scenario.csv",
+    mime="text/csv",
+)
 
 with st.expander("📖 Plain English guide to every number on this page"):
     st.markdown("""
