@@ -8,8 +8,12 @@ from model import (
     pigouvian_subsidy,
     compute_all,
     curves_vs_N,
+    escape_trap_solver,
+    growth_trajectory,
     PAPER_BASELINE,
     FORTUNE_500,
+    INDUSTRY_PRESETS,
+    PARAM_BOUNDS,
 )
 
 
@@ -202,3 +206,107 @@ class TestCurvesVsN:
         N_vals = np.arange(2, 21, dtype=float)
         g_ne = curves_vs_N(PAPER_BASELINE, N_vals)["g_ne"]
         assert np.all(g_ne == g_ne[0])
+
+
+# ── escape_trap_solver ────────────────────────────────────────────────────────
+
+class TestEscapeTrapSolver:
+    def test_returns_none_when_already_at_target(self):
+        # Paper baseline is in the trap (g_NE=0), so target=0 means already there
+        result = escape_trap_solver(PAPER_BASELINE, g_ne_target=0.0)
+        assert result is None
+
+    def test_returns_interventions_for_trap(self):
+        result = escape_trap_solver(PAPER_BASELINE, g_ne_target=0.1)
+        assert result is not None
+        assert len(result) >= 1
+
+    def test_kappa_reduction_achieves_target(self):
+        result = escape_trap_solver(PAPER_BASELINE, g_ne_target=0.1)
+        assert "kappa" in result
+        lever = result["kappa"]
+        # Verify: plugging required kappa back in gives g_NE >= target
+        p = dict(PAPER_BASELINE, kappa=lever["required"])
+        g = equilibrium_generality(p["alpha"], p["beta"], p["kappa"], p["q_star"], p["gamma_g"])
+        assert g >= 0.1 - 1e-3
+
+    def test_beta_increase_achieves_target(self):
+        result = escape_trap_solver(PAPER_BASELINE, g_ne_target=0.1)
+        if "beta" in result:
+            lever = result["beta"]
+            p = dict(PAPER_BASELINE, beta=lever["required"])
+            g = equilibrium_generality(p["alpha"], p["beta"], p["kappa"], p["q_star"], p["gamma_g"])
+            assert g >= 0.1 - 1e-3
+
+    def test_alpha_increase_achieves_target(self):
+        result = escape_trap_solver(PAPER_BASELINE, g_ne_target=0.1)
+        if "alpha" in result:
+            lever = result["alpha"]
+            p = dict(PAPER_BASELINE, alpha=lever["required"])
+            g = equilibrium_generality(p["alpha"], p["beta"], p["kappa"], p["q_star"], p["gamma_g"])
+            assert g >= 0.1 - 1e-3
+
+    def test_required_values_within_param_bounds(self):
+        result = escape_trap_solver(PAPER_BASELINE, g_ne_target=0.2)
+        if result:
+            for key, lever in result.items():
+                if key in PARAM_BOUNDS:
+                    lo, hi = PARAM_BOUNDS[key]
+                    assert lo <= lever["required"] <= hi, f"{key} required={lever['required']} out of [{lo}, {hi}]"
+
+    def test_returns_none_when_already_exceeds_target(self):
+        # Build params where g_NE is already 0.5
+        p = dict(PAPER_BASELINE, alpha=1.0, beta=0.5, kappa=0.0, gamma_g=1.0)
+        result = escape_trap_solver(p, g_ne_target=0.3)
+        assert result is None
+
+    def test_all_interventions_have_required_keys(self):
+        result = escape_trap_solver(PAPER_BASELINE, g_ne_target=0.15)
+        if result:
+            required_keys = {"label", "current", "required", "delta", "direction", "action", "effort"}
+            for lever in result.values():
+                assert required_keys.issubset(lever.keys())
+
+
+# ── growth_trajectory ─────────────────────────────────────────────────────────
+
+class TestGrowthTrajectory:
+    def test_output_keys(self):
+        traj = growth_trajectory(PAPER_BASELINE, n_future=20, years=5)
+        assert set(traj.keys()) == {"year", "N", "td", "dw"}
+
+    def test_output_length(self):
+        traj = growth_trajectory(PAPER_BASELINE, n_future=20, years=5)
+        assert len(traj["year"]) == 6   # years+1 points
+        assert len(traj["N"])    == 6
+        assert len(traj["td"])   == 6
+        assert len(traj["dw"])   == 6
+
+    def test_first_year_matches_compute_all(self):
+        traj = growth_trajectory(PAPER_BASELINE, n_future=20, years=5)
+        expected_td = technical_debt(
+            PAPER_BASELINE["tau"], PAPER_BASELINE["q_star"],
+            PAPER_BASELINE["N"], PAPER_BASELINE["P_bar"]
+        )
+        assert traj["td"][0] == pytest.approx(expected_td, rel=1e-5)
+
+    def test_td_increases_as_N_grows(self):
+        traj = growth_trajectory(PAPER_BASELINE, n_future=20, years=5)
+        # TD should be non-decreasing as N grows
+        assert np.all(np.diff(traj["td"]) >= 0)
+
+    def test_year_axis_starts_at_zero(self):
+        traj = growth_trajectory(PAPER_BASELINE, n_future=20, years=3)
+        assert traj["year"][0] == 0.0
+        assert traj["year"][-1] == 3.0
+
+    def test_n_future_equals_current_gives_flat_trajectory(self):
+        n = PAPER_BASELINE["N"]
+        traj = growth_trajectory(PAPER_BASELINE, n_future=n, years=4)
+        assert np.all(traj["N"] == n)
+        assert np.all(np.diff(traj["td"]) == 0)
+
+    def test_industry_presets_run_without_error(self):
+        for name, preset in INDUSTRY_PRESETS.items():
+            traj = growth_trajectory(preset, n_future=preset["N"] + 5, years=3)
+            assert traj["td"].shape == (4,), f"Failed for {name}"
