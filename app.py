@@ -309,8 +309,7 @@ with st.sidebar:
             N=N, M=M, alpha=alpha, beta=beta, lmbda=lmbda, omega_bar=omega_bar,
             gamma_g=gamma_g, kappa=kappa, q_star=q_star, tau=tau, P_bar=P_bar,
         )
-        cost_centralized = st.session_state.get("cost_centralized", GOVERNANCE_COSTS["centralized"])
-        cost_hybrid      = st.session_state.get("cost_hybrid",      GOVERNANCE_COSTS["hybrid"])
+
 
 # ── Model — computed once for both modes ──────────────────────────────────────
 r               = compute_all(params)
@@ -867,8 +866,11 @@ else:
     st.markdown('<div class="section-label">AI executive summary</div>', unsafe_allow_html=True)
     try:
         import anthropic as _anthropic
-        api_key = (st.secrets.get("ANTHROPIC_API_KEY","") if hasattr(st,"secrets") else "") \
-                  or os.environ.get("ANTHROPIC_API_KEY","")
+        try:
+            api_key = st.secrets.get("ANTHROPIC_API_KEY", "")
+        except Exception:
+            api_key = ""
+        api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
         if not api_key:
             api_key = st.text_input("Anthropic API key", type="password",
                 placeholder="sk-ant-... (never stored)", help="Enter your API key to generate an AI executive summary.")
