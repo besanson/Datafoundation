@@ -392,19 +392,29 @@ if st.session_state.mode == "Simple":
     gauge_col, metrics_col = st.columns([1, 1])
 
     with gauge_col:
+        # Gauge fills to g_so (the optimal target — always responds to all inputs).
+        # Red threshold line shows g_ne (what teams will actually invest).
+        # Color reflects whether the gap is large (red) or closed (green).
+        gauge_target = round(g_so * 100, 1)
+        gauge_actual = round(g_ne * 100, 1)
         bar_color = "#34D399" if pct_of_so >= 75 else "#FCD34D" if pct_of_so >= 40 else "#F87171"
         fig_gauge = go.Figure(go.Indicator(
             mode="gauge+number",
-            value=pct_of_so,
+            value=gauge_target,
             domain={"x": [0, 1], "y": [0, 1]},
-            title={"text": "Data Sharing Score", "font": {"size": 15, "color": "#E5E7EB"}},
-            number={"suffix": " / 100", "font": {"size": 36, "color": bar_color}},
+            title={"text": "Optimal Sharing Level", "font": {"size": 15, "color": "#E5E7EB"}},
+            number={"suffix": "%", "font": {"size": 36, "color": bar_color}},
             gauge={
                 "axis": {"range": [0, 100], "tickcolor": "#4B5563",
                           "tickfont": {"color": "#6B7280"}, "dtick": 25},
                 "bar": {"color": bar_color, "thickness": 0.28},
                 "bgcolor": "rgba(0,0,0,0)",
                 "bordercolor": "rgba(255,255,255,0.06)",
+                "threshold": {
+                    "line": {"color": "#F87171", "width": 3},
+                    "thickness": 0.75,
+                    "value": gauge_actual,
+                },
                 "steps": [
                     {"range": [0,  40], "color": "rgba(239,68,68,0.12)"},
                     {"range": [40, 75], "color": "rgba(252,211,77,0.10)"},
@@ -434,10 +444,11 @@ if st.session_state.mode == "Simple":
         )
         st.markdown("")
         st.metric(
-            label="📊 Shared data coverage",
-            value=f"{pct_of_so:.0f}% of ideal",
-            delta=f"{pct_of_so - 100:.0f}% gap to close" if pct_of_so < 100 else "Optimal",
+            label="📊 Teams will actually share",
+            value=f"{g_ne * 100:.0f}% of max",
+            delta=f"{(g_so - g_ne) * 100:.0f}% gap vs {g_so * 100:.0f}% target" if g_so > 0 else "No sharing needed",
             delta_color="inverse",
+            help="Red marker on the gauge shows this level. The gauge arc shows the optimal target.",
         )
 
     # ── Recommendation ─────────────────────────────────────────────────────────
