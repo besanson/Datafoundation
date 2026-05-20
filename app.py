@@ -177,6 +177,14 @@ if "url_params_loaded" not in st.session_state:
 if "scenarios" not in st.session_state:
     st.session_state.scenarios = []
 
+# ── Session-state defaults (URL params and preset buttons override these) ─────
+_PARAM_DEFAULTS = {**PAPER_BASELINE,
+                   "cost_centralized": GOVERNANCE_COSTS["centralized"],
+                   "cost_hybrid": GOVERNANCE_COSTS["hybrid"]}
+for _k, _v in _PARAM_DEFAULTS.items():
+    if _k not in st.session_state:
+        st.session_state[_k] = _v
+
 # ── Hero ──────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div>
@@ -245,40 +253,31 @@ with st.sidebar:
         st.markdown("---")
 
         with st.expander("🏗️ Organization structure", expanded=True):
-            N = st.slider("Number of domains N", 2, 40, st.session_state.get("N", 12),
+            N = st.slider("Number of domains N", 2, 40, key="N",
                 help="Count your distinct business domains that own data products.")
-            M = st.slider("Cross‑domain consumers M", 0, 50, st.session_state.get("M", 10),
+            M = st.slider("Cross‑domain consumers M", 0, 50, key="M",
                 help="Analytics teams or ML projects consuming data from more than one domain.")
 
         with st.expander("📈 Incentives & value", expanded=True):
-            alpha = st.slider("Domain analytics value α", 0.1, 1.0,
-                              st.session_state.get("alpha", 0.5), 0.05)
-            beta  = st.slider("Generality–quality synergy β", 0.0, 0.5,
-                              st.session_state.get("beta", 0.15), 0.01)
-            lmbda = st.slider("Cross‑domain data value λ", 0.0, 1.0,
-                              st.session_state.get("lmbda", 0.4), 0.01)
-            omega_bar = st.slider("Avg. consumer weight ω̄", 0.0, 1.0,
-                                  st.session_state.get("omega_bar", 0.3), 0.05)
+            alpha = st.slider("Domain analytics value α", 0.1, 1.0, step=0.05, key="alpha")
+            beta  = st.slider("Generality–quality synergy β", 0.0, 0.5, step=0.01, key="beta")
+            lmbda = st.slider("Cross‑domain data value λ", 0.0, 1.0, step=0.01, key="lmbda")
+            omega_bar = st.slider("Avg. consumer weight ω̄", 0.0, 1.0, step=0.05, key="omega_bar")
 
         with st.expander("💰 Cost structure", expanded=False):
-            gamma_g = st.slider("Generality cost γ_g", 0.1, 1.0,
-                                st.session_state.get("gamma_g", 0.4), 0.05)
-            kappa   = st.slider("Fixed standardisation cost κ", 0.0, 0.6,
-                                st.session_state.get("kappa", 0.25), 0.01)
-            q_star  = st.slider("Baseline quality q*", 0.1, 1.0,
-                                st.session_state.get("q_star", 0.6), 0.05)
+            gamma_g = st.slider("Generality cost γ_g", 0.1, 1.0, step=0.05, key="gamma_g")
+            kappa   = st.slider("Fixed standardisation cost κ", 0.0, 0.6, step=0.01, key="kappa")
+            q_star  = st.slider("Baseline quality q*", 0.1, 1.0, step=0.05, key="q_star")
 
         with st.expander("🏦 Technical debt", expanded=False):
-            tau   = st.slider("Integration cost per pair τ (M$)", 0.0, 0.2,
-                              st.session_state.get("tau", 0.05), 0.01)
-            P_bar = st.slider("Avg. prob. needing another domain P̄", 0.0, 1.0,
-                              st.session_state.get("P_bar", 0.5), 0.05)
+            tau   = st.slider("Integration cost per pair τ (M$)", 0.0, 0.2, step=0.01, key="tau")
+            P_bar = st.slider("Avg. prob. needing another domain P̄", 0.0, 1.0, step=0.05, key="P_bar")
 
         with st.expander("🏛️ Governance costs", expanded=False):
             cost_centralized = st.slider("Centralized team cost (M$/yr)", 0.5, 5.0,
-                float(st.session_state.get("cost_centralized", GOVERNANCE_COSTS["centralized"])), 0.1)
+                                         step=0.1, key="cost_centralized")
             cost_hybrid = st.slider("Hybrid approach cost (M$/yr)", 0.5, 3.0,
-                float(st.session_state.get("cost_hybrid", GOVERNANCE_COSTS["hybrid"])), 0.1)
+                                    step=0.1, key="cost_hybrid")
 
         st.markdown("---")
         st.markdown("**💾 Save scenario**")
@@ -417,7 +416,7 @@ if st.session_state.mode == "Simple":
             height=250, margin=dict(l=20, r=20, t=50, b=10),
             paper_bgcolor=PAPER_BG, font=dict(color=FONT_CLR),
         )
-        st.plotly_chart(fig_gauge, use_container_width=True)
+        st.plotly_chart(fig_gauge, use_container_width=True, key="chart_gauge")
 
     with metrics_col:
         st.markdown("")
@@ -709,7 +708,7 @@ else:
             annotation_text=f"  N={params['N']}", annotation_font_color="#7DD3FC")
         fig1.update_layout(**base_layout("Generality gap grows with N — Proposition 1"))
         fig1.update_yaxes(title_text="Generality g", range=[0, 1.05])
-        st.plotly_chart(fig1, use_container_width=True)
+        st.plotly_chart(fig1, use_container_width=True, key="chart_generality")
     with cc2:
         fig2 = go.Figure()
         fig2.add_trace(go.Scatter(x=N_vals, y=curves["td"], name="TD_total",
@@ -719,7 +718,7 @@ else:
             annotation_text=f"  N={params['N']}, TD=${td_total:.2f}M", annotation_font_color="#7DD3FC")
         fig2.update_layout(**base_layout("Technical debt TD_total ($M) vs N — eq. (13)"))
         fig2.update_yaxes(title_text="TD_total ($M)")
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(fig2, use_container_width=True, key="chart_td_n")
 
     fig_dw = go.Figure()
     fig_dw.add_trace(go.Scatter(x=N_vals, y=curves["dw"], name="ΔW",
@@ -729,7 +728,7 @@ else:
         annotation_text=f"  N={params['N']}", annotation_font_color="#7DD3FC")
     fig_dw.update_layout(**base_layout("Annual welfare loss ΔW vs N — eq. (10)", h=260))
     fig_dw.update_yaxes(title_text="ΔW (model units)")
-    st.plotly_chart(fig_dw, use_container_width=True)
+    st.plotly_chart(fig_dw, use_container_width=True, key="chart_dw_n")
 
     # ── Growth trajectory ──────────────────────────────────────────────────────
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
@@ -750,14 +749,14 @@ else:
                 line=dict(color="#F87171", width=2.5), fill="tozeroy", fillcolor="rgba(248,113,113,0.08)"))
             ftd.update_layout(**base_layout(f"Technical debt: Now → {int(traj_years)}yr", h=250, x_title=""))
             ftd.update_yaxes(title_text="TD_total ($M)")
-            st.plotly_chart(ftd, use_container_width=True)
+            st.plotly_chart(ftd, use_container_width=True, key="chart_growth_td")
         with tc2:
             fdw = go.Figure()
             fdw.add_trace(go.Scatter(x=year_labels, y=traj["dw"], mode="lines+markers",
                 line=dict(color="#FCD34D", width=2.5), fill="tozeroy", fillcolor="rgba(252,211,77,0.07)"))
             fdw.update_layout(**base_layout(f"Welfare loss: Now → {int(traj_years)}yr", h=250, x_title=""))
             fdw.update_yaxes(title_text="ΔW (model units)")
-            st.plotly_chart(fdw, use_container_width=True)
+            st.plotly_chart(fdw, use_container_width=True, key="chart_growth_dw")
     td_growth = traj["td"][-1] - traj["td"][0]
     st.markdown(
         f'<div class="insight-box">Growing from <strong>{params["N"]}</strong> to <strong>{n_future} domains</strong> '
@@ -795,7 +794,7 @@ else:
         legend=dict(font=dict(color=FONT_CLR), bgcolor="rgba(0,0,0,0)"),
         title=dict(text="Tornado — ΔW range when each parameter is swept across its full range",
                    font=dict(size=12,color="#E5E7EB"), x=0.01), showlegend=True)
-    st.plotly_chart(fig_t, use_container_width=True)
+    st.plotly_chart(fig_t, use_container_width=True, key="chart_tornado")
 
     # ── gNE vs gSO bar ─────────────────────────────────────────────────────────
     st.markdown('<div class="section-label">Current snapshot — equilibrium vs. optimum</div>',
@@ -813,7 +812,7 @@ else:
                     orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         title=dict(text="gⁿᵉ vs. gˢᵒ for your current parameters",
                    font=dict(size=12,color="#E5E7EB"), x=0.01), showlegend=True)
-    st.plotly_chart(fig3, use_container_width=True)
+    st.plotly_chart(fig3, use_container_width=True, key="chart_gne_gso")
 
     # ── Governance comparison ──────────────────────────────────────────────────
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
