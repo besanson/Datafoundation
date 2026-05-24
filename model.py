@@ -4,10 +4,10 @@ import numpy as np
 # ── Core equations ─────────────────────────────────────────────────────────────
 
 def equilibrium_generality(alpha, beta, kappa, q_star, gamma_g):
-    """Eq. (7): g_NE = max{0, (αβ − κ/q*) / γ_g}"""
+    """Eq. (7): g_NE = max{0, (αβ − κ/q*) / γ_g}, clipped to [0, 1] since g ∈ [0,1]."""
     if q_star <= 0 or gamma_g <= 0:
         return 0.0
-    return max(0.0, (alpha * beta - kappa / q_star) / gamma_g)
+    return min(1.0, max(0.0, (alpha * beta - kappa / q_star) / gamma_g))
 
 
 def social_optimum(alpha, beta, N, lmbda, M, omega_bar, kappa, q_star, gamma_g):
@@ -26,7 +26,7 @@ def welfare_loss(N, lmbda, M, omega_bar, q_star, gamma_g, g_ne, g_so):
     delta_g = g_so - g_ne
     ext = ((N - 1) * lmbda + M * omega_bar) * q_star * delta_g
     cost = (gamma_g / 2.0) * q_star * (g_so ** 2 - g_ne ** 2)
-    return N * (ext - cost)
+    return max(0.0, N * (ext - cost))
 
 
 def technical_debt(tau, q_star, N, P_bar):

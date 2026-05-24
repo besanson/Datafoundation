@@ -188,11 +188,12 @@ for _k, _v in _PARAM_DEFAULTS.items():
 # ── Hero ──────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div>
-  <div class="hero-pill">💧 Data Hydration Gap Model · Besanson 2026</div>
+  <div class="hero-pill">💧 Data Hydration Gap Model · Besanson 2026 · arXiv:2604.00218</div>
   <div class="hero-title">Will your data mesh produce a silver layer?</div>
   <div class="hero-sub">
-    Answer five questions about your organization and instantly see whether your teams will
-    build shared data products on their own — or fall into the data mesh trap.
+    A game-theoretic model proves that rational domain teams will systematically underinvest
+    in shared data products — even when sharing benefits the whole organization.
+    Answer five questions to see where your organization stands and which governance approach closes the gap.
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -427,6 +428,7 @@ if st.session_state.mode == "Simple":
             paper_bgcolor=PAPER_BG, font=dict(color=FONT_CLR),
         )
         st.plotly_chart(fig_gauge, use_container_width=True, key="chart_gauge")
+        st.caption("Arc = optimal target for your org · Red marker = what teams will actually invest")
 
     with metrics_col:
         st.markdown("")
@@ -450,6 +452,37 @@ if st.session_state.mode == "Simple":
             delta_color="inverse",
             help="Red marker on the gauge shows this level. The gauge arc shows the optimal target.",
         )
+
+    # ── How this works explainer ───────────────────────────────────────────────
+    with st.expander("ℹ️ How does this model work?"):
+        st.markdown("""
+**The data mesh trap — a game theory result** (Besanson 2026, [arXiv:2604.00218](https://arxiv.org/abs/2604.00218))
+
+When data ownership is decentralized, each business domain captures only its *own* benefit from
+standardizing its data products. The value created for every other domain — better cross-domain
+joins, faster analytics, reusable pipelines — is an externality that no individual team has an
+incentive to produce. The result: every team under-invests in shared data relative to what would
+maximize organizational value.
+
+**What the model computes:**
+
+| Symbol | Meaning |
+|--------|---------|
+| **gˢᵒ** (gauge arc) | The generality level a central planner would choose — your *optimal target* |
+| **gⁿᵉ** (red marker) | The generality level rational teams will *voluntarily* invest in — the Nash equilibrium |
+| **Gap** | gˢᵒ − gⁿᵉ — the shared-data infrastructure that won't be built without governance action |
+| **ΔW** | Annual value destroyed by decentralized underinvestment (grows as N²) |
+| **TD** | Cost of all custom point-to-point integrations that a silver layer would have made unnecessary |
+| **sᵢ** | Per-domain reusability bonus that exactly corrects the externality (Pigouvian subsidy) |
+
+**The trap condition:** when fixed standardization costs (κ) are large relative to the internal
+synergy between data use and quality (αβ/q*), the equilibrium collapses to zero. No team
+invests at all. This is the "data mesh trap" shown in red.
+
+**Governance regimes** differ in how they close the gap: a central team absorbs the externality
+by building shared products itself; a federated incentive scheme pays each domain a bonus equal
+to the value it creates for others; a hybrid does both at lower intensity.
+        """)
 
     # ── Recommendation ─────────────────────────────────────────────────────────
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
@@ -608,6 +641,27 @@ else:
         )
     st.markdown(f'<div class="insight-box">{insight_msg}</div>', unsafe_allow_html=True)
 
+    with st.expander("📐 About the model — equations and symbols"):
+        st.markdown("""
+**Reference:** Besanson (2026) — *The Data Hydration Gap* — [arXiv:2604.00218](https://arxiv.org/abs/2604.00218)
+
+| Equation | Formula | What it means |
+|----------|---------|---------------|
+| Eq. (7) gⁿᵉ | `max{0, (αβ − κ/q*) / γ_g}` | Generality domains choose when externalites are ignored |
+| Prop. 1 gˢᵒ | `clip[(αβ + (N−1)λ + Mω̄ − κ/q*) / γ_g, 0, 1]` | Social optimum — includes spillover (N−1)λ and consumer term Mω̄ |
+| Eq. (10) ΔW | `N · [((N−1)λ + Mω̄)·q*·Δg − (γ_g/2)·q*·(gˢᵒ²−gⁿᵉ²)]` | Annual welfare loss; grows as N² |
+| Eq. (13) TD | `τ · q* · N(N−1) · P̄` | Cost of all custom pipelines; quadratic in N |
+| Eq. (19) sᵢ | `(N−1) · λ · q*` | Pigouvian subsidy per domain that closes gⁿᵉ → gˢᵒ |
+
+**Trap condition:** gⁿᵉ = 0 when `αβ ≤ κ/q*` (fixed cost dominates synergy).
+At the paper baseline (N=12, α=0.5, β=0.15, κ=0.25, q*=0.6): αβ = 0.075 < κ/q* ≈ 0.417 → trap.
+
+**Inverse solver** finds the minimum change in α, β, κ, q*, or γ_g to achieve a target gⁿᵉ,
+by algebraically solving each lever in isolation. **Welfare loss uses max(0, ·)** because the formula
+can go negative for small N or low externalities — a sign the formula's Taylor approximation is
+outside its valid range, not a genuine welfare gain.
+        """)
+
     # ── KPI Row 1 ──────────────────────────────────────────────────────────────
     st.markdown('<div class="section-label">Generality: what domains choose vs. what is optimal</div>',
                 unsafe_allow_html=True)
@@ -747,9 +801,10 @@ else:
                 unsafe_allow_html=True)
     traj_col1, traj_col2 = st.columns([2, 1])
     with traj_col2:
-        n_future   = st.number_input("Projected domains in N years", min_value=params["N"], max_value=100,
+        n_future   = st.number_input("Projected domains in N years", min_value=2, max_value=100,
                                       value=max(params["N"] + 4, int(params["N"] * 1.5)), step=1)
         traj_years = st.number_input("Years to project", min_value=1, max_value=20, value=5, step=1)
+    n_future = max(int(n_future), params["N"])  # clamp: future must be ≥ current N
     traj = growth_trajectory(params, n_future=n_future, years=int(traj_years))
     year_labels = [f"Year {int(y)}" if y > 0 else "Now" for y in traj["year"]]
     with traj_col1:
@@ -912,9 +967,11 @@ else:
                                 messages=[{"role":"user","content":prompt}]) as stream:
                             for chunk in stream.text_stream:
                                 full_text += chunk
-                                placeholder.markdown(f'<div class="insight-box" style="color:#E5E7EB;">{full_text}▌</div>',
+                                _safe = html_lib.escape(full_text).replace("\n", "<br>")
+                                placeholder.markdown(f'<div class="insight-box" style="color:#E5E7EB;">{_safe}▌</div>',
                                                      unsafe_allow_html=True)
-                        placeholder.markdown(f'<div class="insight-box" style="color:#E5E7EB;">{full_text}</div>',
+                        _safe = html_lib.escape(full_text).replace("\n", "<br>")
+                        placeholder.markdown(f'<div class="insight-box" style="color:#E5E7EB;">{_safe}</div>',
                                              unsafe_allow_html=True)
                         st.session_state.setdefault("ai_summary_cache",{})[ck] = full_text
                     except Exception as e:
