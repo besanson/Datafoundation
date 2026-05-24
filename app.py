@@ -78,6 +78,26 @@ def simple_answers_to_params(answers: dict) -> dict:
     return p
 
 
+def preset_to_simple_answers(preset: dict) -> dict:
+    """Find the nearest Simple-mode selectbox answer for each question given a preset dict.
+    Uses normalized Euclidean distance over the parameters each question controls."""
+    result = {}
+    for q_key, q in SIMPLE_Q.items():
+        best_option, best_dist = None, float("inf")
+        for label, option_params in q["options"].items():
+            dist = sum(
+                ((option_params[pk] - preset[pk])
+                 / max(PARAM_BOUNDS[pk][1] - PARAM_BOUNDS[pk][0], 1e-9)) ** 2
+                for pk in option_params
+                if pk in preset and pk in PARAM_BOUNDS
+            )
+            if dist < best_dist:
+                best_dist, best_option = dist, label
+        if best_option:
+            result[q_key] = best_option
+    return result
+
+
 # ── CSS ────────────────────────────────────────────────────────────────────────
 
 def inject_css():
@@ -231,7 +251,9 @@ with st.sidebar:
         for idx, (name, preset) in enumerate(preset_items):
             with ind_cols[idx % 2]:
                 if st.button(name, use_container_width=True, key=f"preset_s_{idx}"):
-                    st.session_state.update(**preset)
+                    for _qk, _opt in preset_to_simple_answers(preset).items():
+                        st.session_state[f"simple_{_qk}"] = _opt
+                    st.rerun()
 
     # ── EXPERT MODE SIDEBAR ────────────────────────────────────────────────────
     else:
@@ -393,42 +415,34 @@ if st.session_state.mode == "Simple":
     gauge_col, metrics_col = st.columns([1, 1])
 
     with gauge_col:
-        # Gauge fills to g_so (the optimal target — always responds to all inputs).
-        # Red threshold line shows g_ne (what teams will actually invest).
-        # Color reflects whether the gap is large (red) or closed (green).
-        gauge_target = round(g_so * 100, 1)
-        gauge_actual = round(g_ne * 100, 1)
-        bar_color = "#34D399" if pct_of_so >= 75 else "#FCD34D" if pct_of_so >= 40 else "#F87171"
-        fig_gauge = go.Figure(go.Indicator(
-            mode="gauge+number",
-            value=gauge_target,
-            domain={"x": [0, 1], "y": [0, 1]},
-            title={"text": "Optimal Sharing Level", "font": {"size": 15, "color": "#E5E7EB"}},
-            number={"suffix": "%", "font": {"size": 36, "color": bar_color}},
-            gauge={
-                "axis": {"range": [0, 100], "tickcolor": "#4B5563",
-                          "tickfont": {"color": "#6B7280"}, "dtick": 25},
-                "bar": {"color": bar_color, "thickness": 0.28},
-                "bgcolor": "rgba(0,0,0,0)",
-                "bordercolor": "rgba(255,255,255,0.06)",
-                "threshold": {
-                    "line": {"color": "#F87171", "width": 3},
-                    "thickness": 0.75,
-                    "value": gauge_actual,
-                },
-                "steps": [
-                    {"range": [0,  40], "color": "rgba(239,68,68,0.12)"},
-                    {"range": [40, 75], "color": "rgba(252,211,77,0.10)"},
-                    {"range": [75,100], "color": "rgba(52,211,153,0.10)"},
-                ],
-            },
+        # Donut: three segments that always tell the story at a glance.
+        # Green  = what teams will actually invest (g_ne)
+        # Red    = the gap that governance needs to close (g_so − g_ne)
+        # Dark   = level of sharing your org doesn't need at its current scale (1 − g_so)
+        _achieved = round(g_ne * 100, 1)
+        _gap      = round((g_so - g_ne) * 100, 1)
+        _excess   = round((1.0 - g_so) * 100, 1)
+        _center   = (f"{_achieved:.0f}%<br><span style='font-size:0.75em;color:#6B7280'>of "
+                     f"{round(g_so * 100):.0f}%</span>") if g_so > 0 else "No sharing<br>needed"
+        fig_donut = go.Figure(go.Pie(
+            values=[max(_achieved, 1e-6), max(_gap, 1e-6), max(_excess, 1e-6)],
+            labels=["Teams will invest", "Gap — governance needed", "Not needed at this scale"],
+            hole=0.72, sort=False,
+            marker=dict(colors=["#34D399", "#F87171", "#1E293B"],
+                        line=dict(color=PAPER_BG, width=2)),
+            textinfo="none",
+            hovertemplate="%{label}: %{value:.1f}%<extra></extra>",
         ))
-        fig_gauge.update_layout(
-            height=250, margin=dict(l=20, r=20, t=50, b=10),
-            paper_bgcolor=PAPER_BG, font=dict(color=FONT_CLR),
+        fig_donut.add_annotation(text=_center, x=0.5, y=0.5, showarrow=False,
+            font=dict(size=20, color="#E5E7EB"), xanchor="center", yanchor="middle")
+        fig_donut.update_layout(
+            title=dict(text="Data Sharing Breakdown", font=dict(size=13, color="#E5E7EB"), x=0.5, xanchor="center"),
+            height=280, margin=dict(l=10, r=10, t=40, b=70),
+            paper_bgcolor=PAPER_BG, showlegend=True,
+            legend=dict(font=dict(color=FONT_CLR, size=9), bgcolor="rgba(0,0,0,0)",
+                        orientation="h", yanchor="bottom", y=-0.28, xanchor="center", x=0.5),
         )
-        st.plotly_chart(fig_gauge, use_container_width=True, key="chart_gauge")
-        st.caption("Arc = optimal target for your org · Red marker = what teams will actually invest")
+        st.plotly_chart(fig_donut, use_container_width=True, key="chart_gauge")
 
     with metrics_col:
         st.markdown("")
