@@ -47,7 +47,7 @@ SIMPLE_Q = {
             "None: no catalog, no contracts, everything is manual":    {"kappa": 0.5,  "gamma_g": 0.7,  "beta": 0.05},
             "Basic: some documentation and shared guidelines":          {"kappa": 0.3,  "gamma_g": 0.5,  "beta": 0.10},
             "Intermediate: data catalog in place, some contracts":      {"kappa": 0.2,  "gamma_g": 0.35, "beta": 0.18},
-            "Advanced: full platform, automated quality, data mesh":    {"kappa": 0.1,  "gamma_g": 0.2,  "beta": 0.30},
+            "Advanced: full platform, automated quality, data mesh":    {"kappa": 0.1,  "gamma_g": 0.15, "beta": 0.30},
         },
     },
     "data_quality": {
@@ -425,11 +425,13 @@ if st.session_state.mode == "Simple":
         diag_bg     = "rgba(52,211,153,0.08)"
         diag_border = "rgba(52,211,153,0.25)"
         diag_icon   = "🟢"
-        diag_title  = "Near-optimal: your data sharing culture is working"
+        diag_title  = "Near-optimal: your platform has corrected most of the gap"
         diag_body   = (
-            f"Your teams are investing at <strong>{pct_of_so:.0f}%</strong> of the theoretical ideal. "
-            f"Strong incentive alignment: teams find it in their own interest to build reusable data. "
-            f"Marginal improvements are still possible."
+            f"Your teams are self-investing at <strong>{pct_of_so:.0f}%</strong> of what a central planner would choose. "
+            f"This is only possible because your platform has made standardization genuinely cheap (low γ_g) — "
+            f"the externality still exists in theory, but the cost structure has largely neutralized it. "
+            f"The model predicts a small residual gap will always remain under decentralized governance; "
+            f"a light federated incentive or hybrid approach would close it completely."
         )
 
     st.markdown(f"""
@@ -497,32 +499,40 @@ if st.session_state.mode == "Simple":
     # ── How this works explainer ───────────────────────────────────────────────
     with st.expander("ℹ️ How does this model work?"):
         st.markdown("""
-**The data mesh trap: a game theory result** (Besanson 2026, [arXiv:2604.00218](https://arxiv.org/abs/2604.00218))
+**The core theorem** (Besanson 2026, [arXiv:2604.00218](https://arxiv.org/abs/2604.00218))
 
-When data ownership is decentralized, each business domain captures only its *own* benefit from
-standardizing its data products. The value created for every other domain: better cross-domain
-joins, faster analytics, reusable pipelines. It is an externality that no individual team has an
-incentive to produce. The result: every team under-invests in shared data relative to what would
-maximize organizational value.
+> *Decentralized data governance always produces underinvestment in general-purpose data products.*
 
-**What the model computes:**
+Each domain team weighs only its **private** benefit from standardizing its data (αβ · q*).
+It ignores the value that generality creates for every other domain (λ per domain) and for
+cross-domain analytics teams (ω̄ per consumer). Those benefits are externalities — real value
+that lands elsewhere and that no rational team has an incentive to produce on its own.
+
+The result is a structural gap between what teams will do voluntarily (gⁿᵉ) and what would
+maximize organizational value (gˢᵒ). This gap **cannot be competed away** — it is a Nash
+equilibrium, not a coordination failure that good culture or better hiring will solve.
+It grows with the number of domains (N²), meaning every new team added to a data mesh
+compounds the underinvestment.
+
+**What the app measures:**
 
 | Symbol | Meaning |
 |--------|---------|
-| **gˢᵒ** (gauge arc) | The generality level a central planner would choose (your optimal target) |
-| **gⁿᵉ** (red marker) | The generality level rational teams will *voluntarily* invest in (Nash equilibrium) |
-| **Gap** | gˢᵒ − gⁿᵉ: the shared-data infrastructure that won't be built without governance action |
-| **ΔW** | Annual value destroyed by decentralized underinvestment (grows as N²) |
-| **TD** | Cost of all custom point-to-point integrations that a silver layer would have made unnecessary |
+| **gˢᵒ** | Generality a central planner would choose — your optimal target |
+| **gⁿᵉ** | Generality rational teams will invest in on their own — the Nash equilibrium |
+| **Gap** | gˢᵒ − gⁿᵉ: the silver layer that won't be built without governance action |
+| **ΔW** | Annual value destroyed by decentralized underinvestment (scales as N²) |
+| **TD** | Cost of all custom point-to-point pipelines a general silver layer would have replaced |
 | **sᵢ** | Per-domain reusability bonus that exactly corrects the externality (Pigouvian subsidy) |
 
-**The trap condition:** when fixed standardization costs (κ) are large relative to the internal
-synergy between data use and quality (αβ/q*), the equilibrium collapses to zero. No team
-invests at all. This is the "data mesh trap" shown in red.
+**The trap condition:** if fixed standardization costs (κ) outweigh the private synergy (αβ/q*),
+gⁿᵉ collapses to zero — no team invests at all. This is the data mesh trap.
 
-**Governance regimes** differ in how they close the gap: a central team absorbs the externality
-by building shared products itself; a federated incentive scheme pays each domain a bonus equal
-to the value it creates for others; a hybrid does both at lower intensity.
+**Near-optimal is possible but requires platform investment:** the only way gⁿᵉ approaches
+gˢᵒ under decentralized governance is if the platform has made producing general data products
+so cheap (very low γ_g) that private returns alone nearly justify the full investment.
+Even then, a small residual gap remains — closing it completely requires an explicit incentive
+or central mechanism.
         """)
 
     # ── Recommendation ─────────────────────────────────────────────────────────
