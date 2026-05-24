@@ -26,46 +26,46 @@ SIMPLE_Q = {
     "org_size": {
         "label": "How many business units own data in your org?",
         "options": {
-            "Small  —  2 to 6 teams":           {"N": 4,  "M": 3},
-            "Medium  —  7 to 12 teams":          {"N": 10, "M": 8},
-            "Large  —  13 to 20 teams":          {"N": 16, "M": 15},
-            "Enterprise  —  more than 20 teams": {"N": 25, "M": 25},
+            "Small: 2 to 6 teams":           {"N": 4,  "M": 3},
+            "Medium: 7 to 12 teams":          {"N": 10, "M": 8},
+            "Large: 13 to 20 teams":          {"N": 16, "M": 15},
+            "Enterprise: more than 20 teams": {"N": 25, "M": 25},
         },
     },
     "cross_domain": {
         "label": "How often do projects need data from multiple departments?",
         "options": {
-            "Rarely  —  most analytics stays inside one team":         {"lmbda": 0.15, "omega_bar": 0.15},
-            "Sometimes  —  roughly 30% of projects":                   {"lmbda": 0.35, "omega_bar": 0.25},
-            "Often  —  most projects combine data from several teams":  {"lmbda": 0.55, "omega_bar": 0.35},
-            "Always  —  we're building a customer 360 or unified view": {"lmbda": 0.75, "omega_bar": 0.45},
+            "Rarely: most analytics stays inside one team":         {"lmbda": 0.15, "omega_bar": 0.15},
+            "Sometimes: roughly 30% of projects":                   {"lmbda": 0.35, "omega_bar": 0.25},
+            "Often: most projects combine data from several teams":  {"lmbda": 0.55, "omega_bar": 0.35},
+            "Always: we're building a customer 360 or unified view": {"lmbda": 0.75, "omega_bar": 0.45},
         },
     },
     "governance": {
         "label": "How mature is your data governance today?",
         "options": {
-            "None  —  no catalog, no contracts, everything is manual":    {"kappa": 0.5,  "gamma_g": 0.7,  "beta": 0.05},
-            "Basic  —  some documentation and shared guidelines":          {"kappa": 0.3,  "gamma_g": 0.5,  "beta": 0.10},
-            "Intermediate  —  data catalog in place, some contracts":      {"kappa": 0.2,  "gamma_g": 0.35, "beta": 0.18},
-            "Advanced  —  full platform, automated quality, data mesh":    {"kappa": 0.1,  "gamma_g": 0.2,  "beta": 0.30},
+            "None: no catalog, no contracts, everything is manual":    {"kappa": 0.5,  "gamma_g": 0.7,  "beta": 0.05},
+            "Basic: some documentation and shared guidelines":          {"kappa": 0.3,  "gamma_g": 0.5,  "beta": 0.10},
+            "Intermediate: data catalog in place, some contracts":      {"kappa": 0.2,  "gamma_g": 0.35, "beta": 0.18},
+            "Advanced: full platform, automated quality, data mesh":    {"kappa": 0.1,  "gamma_g": 0.2,  "beta": 0.30},
         },
     },
     "data_quality": {
         "label": "How good is your raw / source data quality?",
         "options": {
-            "Poor  —  lots of nulls, broken schemas, inconsistent formats": {"q_star": 0.3, "alpha": 0.30},
-            "Fair  —  mostly usable but with known gaps":                   {"q_star": 0.55,"alpha": 0.50},
-            "Good  —  mostly clean, mostly documented":                     {"q_star": 0.75,"alpha": 0.65},
-            "Excellent  —  data contracts enforced, high completeness":     {"q_star": 0.9, "alpha": 0.80},
+            "Poor: lots of nulls, broken schemas, inconsistent formats": {"q_star": 0.3, "alpha": 0.30},
+            "Fair: mostly usable but with known gaps":                   {"q_star": 0.55,"alpha": 0.50},
+            "Good: mostly clean, mostly documented":                     {"q_star": 0.75,"alpha": 0.65},
+            "Excellent: data contracts enforced, high completeness":     {"q_star": 0.9, "alpha": 0.80},
         },
     },
     "pipeline_cost": {
         "label": "How expensive is it to build one custom data pipeline between two teams?",
         "options": {
-            "Cheap  —  reusable patterns, less than 2 weeks":          {"tau": 0.02, "P_bar": 0.40},
-            "Moderate  —  3 to 5 weeks of engineering time":           {"tau": 0.06, "P_bar": 0.50},
-            "Expensive  —  6 to 10 weeks, legacy or compliance issues": {"tau": 0.12, "P_bar": 0.65},
-            "Very expensive  —  more than 10 weeks, heavy regulation": {"tau": 0.18, "P_bar": 0.75},
+            "Cheap: reusable patterns, less than 2 weeks":          {"tau": 0.02, "P_bar": 0.40},
+            "Moderate: 3 to 5 weeks of engineering time":           {"tau": 0.06, "P_bar": 0.50},
+            "Expensive: 6 to 10 weeks, legacy or compliance issues": {"tau": 0.12, "P_bar": 0.65},
+            "Very expensive: more than 10 weeks, heavy regulation": {"tau": 0.18, "P_bar": 0.75},
         },
     },
 }
@@ -177,7 +177,7 @@ def base_layout(title_text, h=300, x_title="N (number of domains)"):
 
 inject_css()
 
-# ── URL params — load ONCE before any widget renders ──────────────────────────
+# ── URL params: load ONCE before any widget renders ──────────────────────────
 if "url_params_loaded" not in st.session_state:
     st.session_state.url_params_loaded = True
     qp = dict(st.query_params)
@@ -212,13 +212,13 @@ st.markdown("""
   <div class="hero-title">Will your data mesh produce a silver layer?</div>
   <div class="hero-sub">
     A game-theoretic model proves that rational domain teams will systematically underinvest
-    in shared data products — even when sharing benefits the whole organization.
+    in shared data products, even when sharing benefits the whole organization.
     Answer five questions to see where your organization stands and which governance approach closes the gap.
   </div>
 </div>
 """, unsafe_allow_html=True)
 
-# ── Sidebar — mode toggle + inputs ────────────────────────────────────────────
+# ── Sidebar: mode toggle + inputs ────────────────────────────────────────────
 with st.sidebar:
     mode = st.radio("", ["🎯 Simple", "🔬 Expert"], horizontal=True,
                     label_visibility="collapsed",
@@ -229,7 +229,7 @@ with st.sidebar:
     # ── SIMPLE MODE SIDEBAR ────────────────────────────────────────────────────
     if st.session_state.mode == "Simple":
         st.markdown("### Tell us about your org")
-        st.caption("We'll handle the math — just pick the option that best describes you.")
+        st.caption("We'll handle the math. Just pick the option that best describes you.")
         st.markdown("")
 
         answers = {}
@@ -243,6 +243,33 @@ with st.sidebar:
 
         simple_params = simple_answers_to_params(answers)
         params = simple_params
+
+        with st.expander("📋 What these answers assume"):
+            st.caption("Each selection maps to specific model parameter values used in the equations.")
+            _PARAM_NAMES = {
+                "N": "N (domains)", "M": "M (consumers)",
+                "lmbda": "λ (cross-domain value)", "omega_bar": "ω̄ (consumer weight)",
+                "kappa": "κ (fixed standardization cost)", "gamma_g": "γ_g (generality cost)",
+                "beta": "β (generality-quality synergy)", "q_star": "q* (baseline data quality)",
+                "alpha": "α (domain analytics value)", "tau": "τ (pipeline cost, $M)",
+                "P_bar": "P̄ (prob. needing domain)",
+            }
+            _Q_LABELS = {
+                "org_size": "Org size", "cross_domain": "Cross-domain",
+                "governance": "Governance", "data_quality": "Data quality",
+                "pipeline_cost": "Pipeline cost",
+            }
+            _rows = []
+            for _qk, _ans in answers.items():
+                _short = _ans.split(":")[0].strip()
+                for _pk, _val in SIMPLE_Q[_qk]["options"][_ans].items():
+                    _rows.append({
+                        "Question": _Q_LABELS.get(_qk, _qk),
+                        "Answer": _short,
+                        "Parameter": _PARAM_NAMES.get(_pk, _pk),
+                        "Value": _val,
+                    })
+            st.dataframe(pd.DataFrame(_rows), hide_index=True, use_container_width=True)
 
         st.markdown("---")
         st.markdown("**Industry shortcut**")
@@ -325,7 +352,7 @@ with st.sidebar:
                 "q_star": q_star, "tau": tau, "P_bar": P_bar,
                 "cost_centralized": cost_centralized, "cost_hybrid": cost_hybrid,
             })
-            st.success("URL updated — copy from your browser's address bar.")
+            st.success("URL updated. Copy from your browser's address bar.")
 
         params = dict(
             N=N, M=M, alpha=alpha, beta=beta, lmbda=lmbda, omega_bar=omega_bar,
@@ -333,7 +360,7 @@ with st.sidebar:
         )
 
 
-# ── Model — computed once for both modes ──────────────────────────────────────
+# ── Model: computed once for both modes ──────────────────────────────────────
 r               = compute_all(params)
 g_ne            = r["g_ne"]
 g_so            = r["g_so"]
@@ -353,7 +380,7 @@ if st.session_state.mode == "Simple":
 invest_needed = round(subsidy * params["N"], 2)
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# SIMPLE MODE — visual dashboard
+# SIMPLE MODE: visual dashboard
 # ═══════════════════════════════════════════════════════════════════════════════
 if st.session_state.mode == "Simple":
 
@@ -363,7 +390,7 @@ if st.session_state.mode == "Simple":
         diag_bg     = "rgba(239,68,68,0.08)"
         diag_border = "rgba(239,68,68,0.25)"
         diag_icon   = "🔴"
-        diag_title  = "Data Mesh Trap — your teams are building data silos"
+        diag_title  = "Data Mesh Trap: your teams are building data silos"
         diag_body   = (
             f"With <strong>{params['N']} teams</strong>, no one has an incentive to build data products "
             f"that others can reuse. Every cross-department analytics project will require a "
@@ -375,7 +402,7 @@ if st.session_state.mode == "Simple":
         diag_bg     = "rgba(251,146,60,0.08)"
         diag_border = "rgba(251,146,60,0.25)"
         diag_icon   = "🟠"
-        diag_title  = "Severe underinvestment — data silos are forming"
+        diag_title  = "Severe underinvestment: data silos are forming"
         diag_body   = (
             f"Your teams invest <em>some</em> effort in shared data, but only "
             f"<strong>{pct_of_so:.0f}%</strong> of what the organization actually needs. "
@@ -387,7 +414,7 @@ if st.session_state.mode == "Simple":
         diag_bg     = "rgba(252,211,77,0.08)"
         diag_border = "rgba(252,211,77,0.25)"
         diag_icon   = "🟡"
-        diag_title  = "Moderate underinvestment — almost there"
+        diag_title  = "Moderate underinvestment: almost there"
         diag_body   = (
             f"Your teams reach <strong>{pct_of_so:.0f}%</strong> of the ideal data sharing level. "
             f"A real silver layer exists but gaps remain. "
@@ -398,10 +425,10 @@ if st.session_state.mode == "Simple":
         diag_bg     = "rgba(52,211,153,0.08)"
         diag_border = "rgba(52,211,153,0.25)"
         diag_icon   = "🟢"
-        diag_title  = "Near-optimal — your data sharing culture is working"
+        diag_title  = "Near-optimal: your data sharing culture is working"
         diag_body   = (
             f"Your teams are investing at <strong>{pct_of_so:.0f}%</strong> of the theoretical ideal. "
-            f"Strong incentive alignment — teams find it in their own interest to build reusable data. "
+            f"Strong incentive alignment: teams find it in their own interest to build reusable data. "
             f"Marginal improvements are still possible."
         )
 
@@ -426,7 +453,7 @@ if st.session_state.mode == "Simple":
                      f"{round(g_so * 100):.0f}%</span>") if g_so > 0 else "No sharing<br>needed"
         fig_donut = go.Figure(go.Pie(
             values=[max(_achieved, 1e-6), max(_gap, 1e-6), max(_excess, 1e-6)],
-            labels=["Teams will invest", "Gap — governance needed", "Not needed at this scale"],
+            labels=["Teams will invest", "Gap: governance needed", "Not needed at this scale"],
             hole=0.72, sort=False,
             marker=dict(colors=["#34D399", "#F87171", "#1E293B"],
                         line=dict(color=PAPER_BG, width=2)),
@@ -470,11 +497,11 @@ if st.session_state.mode == "Simple":
     # ── How this works explainer ───────────────────────────────────────────────
     with st.expander("ℹ️ How does this model work?"):
         st.markdown("""
-**The data mesh trap — a game theory result** (Besanson 2026, [arXiv:2604.00218](https://arxiv.org/abs/2604.00218))
+**The data mesh trap: a game theory result** (Besanson 2026, [arXiv:2604.00218](https://arxiv.org/abs/2604.00218))
 
 When data ownership is decentralized, each business domain captures only its *own* benefit from
-standardizing its data products. The value created for every other domain — better cross-domain
-joins, faster analytics, reusable pipelines — is an externality that no individual team has an
+standardizing its data products. The value created for every other domain: better cross-domain
+joins, faster analytics, reusable pipelines. It is an externality that no individual team has an
 incentive to produce. The result: every team under-invests in shared data relative to what would
 maximize organizational value.
 
@@ -482,9 +509,9 @@ maximize organizational value.
 
 | Symbol | Meaning |
 |--------|---------|
-| **gˢᵒ** (gauge arc) | The generality level a central planner would choose — your *optimal target* |
-| **gⁿᵉ** (red marker) | The generality level rational teams will *voluntarily* invest in — the Nash equilibrium |
-| **Gap** | gˢᵒ − gⁿᵉ — the shared-data infrastructure that won't be built without governance action |
+| **gˢᵒ** (gauge arc) | The generality level a central planner would choose (your optimal target) |
+| **gⁿᵉ** (red marker) | The generality level rational teams will *voluntarily* invest in (Nash equilibrium) |
+| **Gap** | gˢᵒ − gⁿᵉ: the shared-data infrastructure that won't be built without governance action |
 | **ΔW** | Annual value destroyed by decentralized underinvestment (grows as N²) |
 | **TD** | Cost of all custom point-to-point integrations that a silver layer would have made unnecessary |
 | **sᵢ** | Per-domain reusability bonus that exactly corrects the externality (Pigouvian subsidy) |
@@ -612,12 +639,12 @@ to the value it creates for others; a hybrid does both at lower intensity.
             {"Parameter": "P̄", "Value": round(params["P_bar"],   3)},
         ])
         out_df = pd.DataFrame([{
-            "Output": "gⁿᵉ — equilibrium generality (Eq. 7)",    "Value": round(g_ne, 4)},
-            {"Output": "gˢᵒ — social optimum (Prop. 1)",         "Value": round(g_so, 4)},
-            {"Output": "Δg — generality gap",                     "Value": round(delta_g, 4)},
-            {"Output": "ΔW — welfare loss (Eq. 10)",              "Value": round(delta_W, 4)},
-            {"Output": "TD_total — technical debt (Eq. 13, $M)",  "Value": round(td_total, 4)},
-            {"Output": "sᵢ — Pigouvian subsidy (Eq. 19)",         "Value": round(subsidy, 4)},
+            "Output": "gⁿᵉ: equilibrium generality (Eq. 7)",    "Value": round(g_ne, 4)},
+            {"Output": "gˢᵒ: social optimum (Prop. 1)",         "Value": round(g_so, 4)},
+            {"Output": "Δg: generality gap",                     "Value": round(delta_g, 4)},
+            {"Output": "ΔW: welfare loss (Eq. 10)",              "Value": round(delta_W, 4)},
+            {"Output": "TD_total: technical debt (Eq. 13, $M)",  "Value": round(td_total, 4)},
+            {"Output": "sᵢ: Pigouvian subsidy (Eq. 19)",         "Value": round(subsidy, 4)},
         ])
         tc1, tc2 = st.columns(2)
         with tc1:
@@ -628,7 +655,7 @@ to the value it creates for others; a hybrid does both at lower intensity.
             st.dataframe(out_df, hide_index=True, use_container_width=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# EXPERT MODE — full technical app
+# EXPERT MODE: full technical app
 # ═══════════════════════════════════════════════════════════════════════════════
 else:
     # ── Insight banner ─────────────────────────────────────────────────────────
@@ -655,14 +682,14 @@ else:
         )
     st.markdown(f'<div class="insight-box">{insight_msg}</div>', unsafe_allow_html=True)
 
-    with st.expander("📐 About the model — equations and symbols"):
+    with st.expander("📐 About the model: equations and symbols"):
         st.markdown("""
-**Reference:** Besanson (2026) — *The Data Hydration Gap* — [arXiv:2604.00218](https://arxiv.org/abs/2604.00218)
+**Reference:** Besanson (2026), *The Data Hydration Gap*, [arXiv:2604.00218](https://arxiv.org/abs/2604.00218)
 
 | Equation | Formula | What it means |
 |----------|---------|---------------|
 | Eq. (7) gⁿᵉ | `max{0, (αβ − κ/q*) / γ_g}` | Generality domains choose when externalites are ignored |
-| Prop. 1 gˢᵒ | `clip[(αβ + (N−1)λ + Mω̄ − κ/q*) / γ_g, 0, 1]` | Social optimum — includes spillover (N−1)λ and consumer term Mω̄ |
+| Prop. 1 gˢᵒ | `clip[(αβ + (N−1)λ + Mω̄ − κ/q*) / γ_g, 0, 1]` | Social optimum: includes spillover (N−1)λ and consumer term Mω̄ |
 | Eq. (10) ΔW | `N · [((N−1)λ + Mω̄)·q*·Δg − (γ_g/2)·q*·(gˢᵒ²−gⁿᵉ²)]` | Annual welfare loss; grows as N² |
 | Eq. (13) TD | `τ · q* · N(N−1) · P̄` | Cost of all custom pipelines; quadratic in N |
 | Eq. (19) sᵢ | `(N−1) · λ · q*` | Pigouvian subsidy per domain that closes gⁿᵉ → gˢᵒ |
@@ -672,7 +699,7 @@ At the paper baseline (N=12, α=0.5, β=0.15, κ=0.25, q*=0.6): αβ = 0.075 < �
 
 **Inverse solver** finds the minimum change in α, β, κ, q*, or γ_g to achieve a target gⁿᵉ,
 by algebraically solving each lever in isolation. **Welfare loss uses max(0, ·)** because the formula
-can go negative for small N or low externalities — a sign the formula's Taylor approximation is
+can go negative for small N or low externalities: a sign the formula's Taylor approximation is
 outside its valid range, not a genuine welfare gain.
         """)
 
@@ -685,14 +712,14 @@ outside its valid range, not a genuine welfare gain.
         interp = ("Domains produce purely narrow products. No silver layer without intervention."
                   if in_trap else f"Domains self-invest at <strong>{pct_of_so:.0f}%</strong> of the social optimum.")
         st.markdown(f"""<div class="kpi-card">
-          <div class="kpi-label">What domains actually do — gⁿᵉ (eq. 7)</div>
+          <div class="kpi-label">What domains actually do: gⁿᵉ (eq. 7)</div>
           <div class="{val_class}">{g_ne:.3f}</div>
           <div class="kpi-sub">Equilibrium generality: rational choice when externalities are ignored.</div>
           <div class="kpi-interp">{interp}</div>
         </div>""", unsafe_allow_html=True)
     with col2:
         st.markdown(f"""<div class="kpi-card">
-          <div class="kpi-label">What society needs — gˢᵒ (Prop. 1)</div>
+          <div class="kpi-label">What society needs: gˢᵒ (Prop. 1)</div>
           <div class="kpi-value-good">{g_so:.3f}</div>
           <div class="kpi-sub">Social optimum: generality a central planner would choose.</div>
           <div class="kpi-interp">Includes externality (N−1)λ and consumer term Mω̄ that private domains ignore.</div>
@@ -703,7 +730,7 @@ outside its valid range, not a genuine welfare gain.
                  '<span class="badge-partial">⚡ Large gap</span>' if (delta_g/g_so > 0.5 if g_so > 0 else False) else
                  '<span class="badge-ok">✅ Manageable gap</span>')
         st.markdown(f"""<div class="kpi-card">
-          <div class="kpi-label">Underinvestment gap — Δg (eq. 8)</div>
+          <div class="kpi-label">Underinvestment gap: Δg (eq. 8)</div>
           <div class="kpi-value">{delta_g:.3f}</div>
           {badge}
           <div class="kpi-sub">Distance between equilibrium and optimum.</div>
@@ -730,7 +757,7 @@ outside its valid range, not a genuine welfare gain.
         </div>""", unsafe_allow_html=True)
     with col6:
         st.markdown(f"""<div class="kpi-card">
-          <div class="kpi-label">Reusability bonus needed — sᵢ (eq. 19)</div>
+          <div class="kpi-label">Reusability bonus needed: sᵢ (eq. 19)</div>
           <div class="kpi-value-blue">{subsidy:.3f}</div>
           <div class="kpi-sub">Per-domain reward that corrects the externality and aligns incentives with social optimum.</div>
           <div class="kpi-interp">Total: <strong>${invest_needed:.2f}M/yr</strong> across {params['N']} domains vs ${welfare_annual_m:.1f}M/yr loss.</div>
@@ -740,7 +767,7 @@ outside its valid range, not a genuine welfare gain.
     if in_trap or pct_of_so < 75:
         st.markdown('<hr class="divider">', unsafe_allow_html=True)
         st.markdown(
-            f'<div class="section-label">{"How to escape the trap" if in_trap else "How to close the gap"} — minimum parameter changes needed</div>',
+            f'<div class="section-label">{"How to escape the trap" if in_trap else "How to close the gap"}: minimum parameter changes needed</div>',
             unsafe_allow_html=True)
         target_val   = 0.01 if in_trap else g_so * 0.75
         interventions = escape_trap_solver(params, g_ne_target=target_val)
@@ -785,7 +812,7 @@ outside its valid range, not a genuine welfare gain.
             fill="tonexty", fillcolor="rgba(52,211,153,0.07)"))
         fig1.add_vline(x=params["N"], line_dash="dot", line_color="#7DD3FC",
             annotation_text=f"  N={params['N']}", annotation_font_color="#7DD3FC")
-        fig1.update_layout(**base_layout("Generality gap grows with N — Proposition 1"))
+        fig1.update_layout(**base_layout("Generality gap grows with N (Proposition 1)"))
         fig1.update_yaxes(title_text="Generality g", range=[0, 1.05])
         st.plotly_chart(fig1, use_container_width=True, key="chart_generality")
     with cc2:
@@ -795,7 +822,7 @@ outside its valid range, not a genuine welfare gain.
             fill="tozeroy", fillcolor="rgba(248,113,113,0.08)"))
         fig2.add_vline(x=params["N"], line_dash="dot", line_color="#7DD3FC",
             annotation_text=f"  N={params['N']}, TD=${td_total:.2f}M", annotation_font_color="#7DD3FC")
-        fig2.update_layout(**base_layout("Technical debt TD_total ($M) vs N — eq. (13)"))
+        fig2.update_layout(**base_layout("Technical debt TD_total ($M) vs N (eq. 13)"))
         fig2.update_yaxes(title_text="TD_total ($M)")
         st.plotly_chart(fig2, use_container_width=True, key="chart_td_n")
 
@@ -805,13 +832,13 @@ outside its valid range, not a genuine welfare gain.
         fill="tozeroy", fillcolor="rgba(252,211,77,0.07)"))
     fig_dw.add_vline(x=params["N"], line_dash="dot", line_color="#7DD3FC",
         annotation_text=f"  N={params['N']}", annotation_font_color="#7DD3FC")
-    fig_dw.update_layout(**base_layout("Annual welfare loss ΔW vs N — eq. (10)", h=260))
+    fig_dw.update_layout(**base_layout("Annual welfare loss ΔW vs N (eq. 10)", h=260))
     fig_dw.update_yaxes(title_text="ΔW (model units)")
     st.plotly_chart(fig_dw, use_container_width=True, key="chart_dw_n")
 
     # ── Growth trajectory ──────────────────────────────────────────────────────
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
-    st.markdown('<div class="section-label">Growth trajectory — projected cost as your organization scales</div>',
+    st.markdown('<div class="section-label">Growth trajectory: projected cost as your organization scales</div>',
                 unsafe_allow_html=True)
     traj_col1, traj_col2 = st.columns([2, 1])
     with traj_col2:
@@ -841,12 +868,12 @@ outside its valid range, not a genuine welfare gain.
     st.markdown(
         f'<div class="insight-box">Growing from <strong>{params["N"]}</strong> to <strong>{n_future} domains</strong> '
         f'over {int(traj_years)} years adds <strong>${td_growth:.2f}M</strong> in technical debt '
-        f'and <strong>${(n_future - params["N"]) * 0.75:.1f}M/yr</strong> in additional welfare loss — '
+        f'and <strong>${(n_future - params["N"]) * 0.75:.1f}M/yr</strong> in additional welfare loss, '
         f'if governance does not change.</div>', unsafe_allow_html=True)
 
     # ── Sensitivity tornado ────────────────────────────────────────────────────
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
-    st.markdown('<div class="section-label">Sensitivity — which parameter drives welfare loss most?</div>',
+    st.markdown('<div class="section-label">Sensitivity: which parameter drives welfare loss most?</div>',
                 unsafe_allow_html=True)
     SENS_PARAMS = ["N","lmbda","alpha","beta","gamma_g","kappa","q_star","tau","P_bar","M","omega_bar"]
     SENS_LABELS = {"N":"Domains N","lmbda":"Cross-domain value λ","alpha":"Analytics value α",
@@ -872,12 +899,12 @@ outside its valid range, not a genuine welfare gain.
         xaxis=dict(gridcolor=GRID_CLR, zerolinecolor=GRID_CLR, title_text="ΔW (model units)"),
         yaxis=dict(gridcolor=GRID_CLR, zerolinecolor=GRID_CLR),
         legend=dict(font=dict(color=FONT_CLR), bgcolor="rgba(0,0,0,0)"),
-        title=dict(text="Tornado — ΔW range when each parameter is swept across its full range",
+        title=dict(text="Tornado: ΔW range when each parameter is swept across its full range",
                    font=dict(size=12,color="#E5E7EB"), x=0.01), showlegend=True)
     st.plotly_chart(fig_t, use_container_width=True, key="chart_tornado")
 
     # ── gNE vs gSO bar ─────────────────────────────────────────────────────────
-    st.markdown('<div class="section-label">Current snapshot — equilibrium vs. optimum</div>',
+    st.markdown('<div class="section-label">Current snapshot: equilibrium vs. optimum</div>',
                 unsafe_allow_html=True)
     fig3 = go.Figure()
     fig3.add_trace(go.Bar(name="Nash Equilibrium gⁿᵉ", x=["Generality level"], y=[g_ne],
@@ -896,7 +923,7 @@ outside its valid range, not a genuine welfare gain.
 
     # ── Governance comparison ──────────────────────────────────────────────────
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
-    st.markdown('<div class="section-label">Governance regime comparison — Table 2 from the paper</div>',
+    st.markdown('<div class="section-label">Governance regime comparison (Table 2 from the paper)</div>',
                 unsafe_allow_html=True)
     regimes = [
         ("Pure Data Mesh",          0.0,              0.0,               -welfare_annual_m,                   "#F87171"),
@@ -922,17 +949,17 @@ outside its valid range, not a genuine welfare gain.
     if in_trap:
         di, dt = "🔴", "Your organization is in the Data Mesh Trap"
         db = (f"With {params['N']} domains, teams have <strong>zero incentive</strong> to build reusable data products. "
-              f"Cross-domain analytics requires custom pipelines every time — estimated <strong>${td_total:,.2f}M</strong> in technical debt.")
+              f"Cross-domain analytics requires custom pipelines every time, estimated <strong>${td_total:,.2f}M</strong> in technical debt.")
     elif pct_of_so < 40:
-        di, dt = "🟠", "Severe underinvestment — silver layer is thin and fragile"
+        di, dt = "🟠", "Severe underinvestment: silver layer is thin and fragile"
         db = (f"Domains reach only <strong>{pct_of_so:.0f}%</strong> of what is needed (gⁿᵉ = {g_ne:.2f}). "
               f"Technical debt: <strong>${td_total:,.2f}M</strong> across {params['N']*(params['N']-1)} potential pairs.")
     elif pct_of_so < 75:
-        di, dt = "🟡", "Moderate underinvestment — your silver layer needs a push"
+        di, dt = "🟡", "Moderate underinvestment: your silver layer needs a push"
         db = (f"Domains invest at {pct_of_so:.0f}% of optimal (gⁿᵉ = {g_ne:.2f}). "
               f"A small governance investment could unlock <strong>${welfare_annual_m:.1f}M/year</strong>.")
     else:
-        di, dt = "🟢", "Near-optimal — your governance is working"
+        di, dt = "🟢", "Near-optimal: your governance is working"
         db = f"Domains invest at {pct_of_so:.0f}% of the social optimum (gⁿᵉ = {g_ne:.2f}). Strong incentive alignment."
 
     st.markdown(f"""<div class="kpi-card" style="margin-bottom:1rem;">
@@ -1036,7 +1063,7 @@ outside its valid range, not a genuine welfare gain.
 | **gˢᵒ** | The reusability level that maximises value for the whole organisation. Your target. |
 | **Δg** | How far short of the ideal when domains act in self-interest. |
 | **ΔW** | Total value destroyed annually by underinvestment. |
-| **TD** | Hidden future cost from narrow products — grows as N². |
+| **TD** | Hidden future cost from narrow products, grows as N². |
 | **sᵢ** | Reward each domain needs to make general products worth building. |
 """)
 
